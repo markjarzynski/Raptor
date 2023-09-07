@@ -1,0 +1,6 @@
+[submodule "Common/External/glfw"]
+	path = Common/External/glfw
+	url = git@github.com:glfw/glfw.git
+[submodule "Common/External/EASTL"]
+	path = Common/External/EASTL
+	url = git@github.com:electronicarts/EASTL.git
