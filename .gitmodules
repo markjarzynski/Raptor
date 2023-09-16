@@ -4,3 +4,6 @@
 [submodule "Common/External/EASTL"]
 	path = Common/External/EASTL
 	url = git@github.com:electronicarts/EASTL.git
+[submodule ".\\Common\\External\\imgui"]
+	path = .\\Common\\External\\imgui
+	url = git@github.com:ocornut/imgui.git

@@ -29,6 +29,23 @@ include_directories (${EASTL_ROOT_DIR}/test/packages/EAThread/include)
 set(EASTL_LIBRARY debug ${EASTL_ROOT_DIR}/build/Debug/EASTL.lib optimized ${EASTL_ROOT_DIR}/build/Release/EASTL.lib)
 add_custom_target(NatVis SOURCES ${EASTL_ROOT_DIR}/doc/EASTL.natvis)
 
+# Dear ImGui
+set(IMGUI_ROOT_DIR "${CMAKE_CURRENT_LIST_DIR}/Common/External/imgui")
+include_directories (${IMGUI_DIIR_DIR})
+
+add_library (imgui
+    ${IMGUI_ROOT_DIR}/imgui.cpp
+    ${IMGUI_ROOT_DIR}/imgui_draw.cpp
+    ${IMGUI_ROOT_DIR}/imgui_tables.cpp
+    ${IMGUI_ROOT_DIR}/imgui_widgets.cpp
+    ${IMGUI_ROOT_DIR}/imgui_demo.cpp
+)
+
+add_library(imgui::imgui ALIAS imgui)
+
+target_include_directories(imgui PUBLIC "${IMGUI_ROOT_DIR}")
+
+
 # Vulkan
 find_package(Vulkan REQUIRED)
 
@@ -37,4 +54,5 @@ PRIVATE
     glfw
     ${EASTL_LIBRARY}
     "Vulkan::Vulkan"
+    imgui
 )
