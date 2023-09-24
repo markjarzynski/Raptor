@@ -1,6 +1,8 @@
 {
     "files.associations": {
-        "new": "cpp"
+        "new": "cpp",
+        "xstring": "cpp",
+        "*.in": "cpp"
     },
     "files.eol": "\n",
 }
