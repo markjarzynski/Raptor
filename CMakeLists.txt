@@ -31,8 +31,11 @@ include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
 PRIVATE
+    EASTL
+    EAAssert
+    EAThread
+    EAStdC
     glfw
-    ${EASTL_LIBRARY}
-    "Vulkan::Vulkan"
     imgui
+    "Vulkan::Vulkan"
 )
