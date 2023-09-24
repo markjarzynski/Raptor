@@ -21,8 +21,10 @@ find_package(Vulkan REQUIRED)
 
 add_executable(${PROJECT_NAME}
     main.cpp
-    Graphics/Window.h
-    Graphics/Window.cpp
+    Graphics/Window.h Graphics/Window.cpp
+    Graphics/Vulkan.h Graphics/Vulkan.cpp
+    Debug/Log.h Debug/Log.cpp
+    Debug/UI/DebugUI.h Debug/UI/DebugUI.cpp
 )
 
 include_directories(${PROJECT_NAME}

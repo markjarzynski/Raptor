@@ -20,7 +20,7 @@ public:
 
     bool ShouldClose() { return glfwWindowShouldClose(window); }
     void PollEvents() { glfwPollEvents(); }
-    void SwapBuffers() { glfwSwapBuffers(window); }
+    char* GetName() { return name.c_str(); }
 
     bool framebufferResized = false;
 

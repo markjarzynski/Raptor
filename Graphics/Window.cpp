@@ -15,6 +15,7 @@ Window::Window (int width, int height, eastl::string name)
     window = glfwCreateWindow(width, height, name.c_str(), nullptr, nullptr);
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+    glfwMakeContextCurrent(window);
 }
 
 Window::~Window()

@@ -11,6 +11,8 @@
 #include <imgui.h>
 
 #include "Graphics/Window.h"
+#include "Graphics/Vulkan.h"
+#include "Debug/UI/DebugUI.h"
 
 // These new operators are required by EASTL
 void* __cdecl operator new[](size_t size, const char* pName, int flags, unsigned debugFlags, const char* file, int line)
@@ -39,19 +41,15 @@ int main( int argc, char** argv)
 {
     debug_print_versions();
 
-    Raptor::Graphics::Window window {1920, 1080, "Raptor"};
-
-    //glfwMakeContextCurrent(window);
-
-    //IMGUI_CHECKVERSION();
-    //ImGui::CreateContext();
+    Raptor::Graphics::Window window {1920, 1080, "Raptor", "1.0"};
+    Raptor::Graphics::Vulkan vulkan {&window};
+    Raptor::Debug::UI::DebugUI debugUI {&window, &vulkan};
 
     while (!window.ShouldClose())
     {
-        window.SwapBuffers();
         window.PollEvents();
-
-        //ImGui::ShowDemoWindow();
+        debugUI.Update();
+        debugUI.Render();
     }
 
     return 0;
