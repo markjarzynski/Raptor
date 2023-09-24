@@ -4,7 +4,8 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_vulkan.h"
 
-#include "Window.h"
+#include "../../Graphics/Window.h"
+#include "../../Graphics/Vulkan.h"
 
 namespace Raptor
 {
@@ -16,11 +17,14 @@ class DebugUI
 {
 public:
 
-    DebugUI(Window& window, Vulkan& vulkan);
+    DebugUI(Raptor::Graphics::Window& window, Raptor::Graphics::Vulkan& vulkan);
     ~DebugUI();
 
     DebugUI(const DebugUI &) = delete;
     DebugUI &operator=(const DebugUI &) = delete;
+
+    Raptor::Graphics::Window* window;
+    Raptor::Graphics::Vulkan* vulkan;
 
     void Update();
     void Render();

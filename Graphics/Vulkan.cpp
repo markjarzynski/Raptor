@@ -8,8 +8,14 @@ namespace Graphics
 {
 
 Vulkan::Vulkan(Window& window)
+    : window(&window)
 {
     createInstance();
+}
+
+Vulkan::~Vulkan()
+{
+    destroyInstance();
 }
 
 void Vulkan::createInstance()
@@ -19,9 +25,9 @@ void Vulkan::createInstance()
     VkApplicationInfo appInfo{};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.pApplicationName = window->GetName();
-    appInfo.applicationVersion = VK_MAKE_VERSION(RAPTOR_VERSION_MAJOR, RAPTOR_VERSION_MINOR, RAPTOR_VERSION_PATCH);
+    appInfo.applicationVersion = 1; //VK_MAKE_VERSION(RAPTOR_VERSION_MAJOR, RAPTOR_VERSION_MINOR, RAPTOR_VERSION_PATCH);
     appInfo.pEngineName = RAPTOR_PROJECT_NAME;
-    appInfo.engineVersion = VK_MAKE_VERSION(RAPTOR_VERSION_MAJOR, RAPTOR_VERSION_MINOR, RAPTOR_VERSION_PATCH);
+    appInfo.engineVersion = 1; //VK_MAKE_VERSION(RAPTOR_VERSION_MAJOR, RAPTOR_VERSION_MINOR, RAPTOR_VERSION_PATCH);
     appInfo.apiVersion = VK_API_VERSION_1_3;
 
     VkInstanceCreateInfo createInfo{};
@@ -31,7 +37,7 @@ void Vulkan::createInstance()
     result = vkCreateInstance(&createInfo, nullptr, &instance);
     check_result(result);
 
-    
+
 }
 
 void Vulkan::destroyInstance()
@@ -45,6 +51,8 @@ static bool check_result(VkResult result)
         return true;
     
     EA::StdC::Fprintf(stderr, "Vulkan error: code(%u)\n", result);
+
+    return false;
 }
 
 } // namespace Graphics

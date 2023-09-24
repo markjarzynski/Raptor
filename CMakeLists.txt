@@ -13,11 +13,18 @@ configure_file(Config.h.in Config.h)
 # cmake module path
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/CMake")
 
-include(GLFW)
-include(EASTL)
-include(DearImGui)
-
 find_package(Vulkan REQUIRED)
+
+#include(GLFW)
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+find_package(GLFW REQUIRED)
+
+include(EASTL)
+include(ImGui)
+
+#find_package(IMGUI REQUIRED)
 
 add_executable(${PROJECT_NAME}
     main.cpp
@@ -29,7 +36,14 @@ add_executable(${PROJECT_NAME}
 
 include_directories(${PROJECT_NAME}
     ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/Graphics
+    ${CMAKE_CURRENT_SOURCE_DIR}/Debug
+    ${CMAKE_CURRENT_SOURCE_DIR}/Debug/UI
 )
+
+add_subdirectory(Debug)
+add_subdirectory(Graphics)
+add_subdirectory(Debug/UI)
 
 target_link_libraries(${PROJECT_NAME}
 PRIVATE
@@ -40,4 +54,7 @@ PRIVATE
     glfw
     imgui
     "Vulkan::Vulkan"
+    "Raptor::Debug"
+    "Raptor::Graphics"
+    "Raptor::Debug::UI"
 )

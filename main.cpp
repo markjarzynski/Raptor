@@ -1,14 +1,7 @@
 #include "Config.h"
 
-#include <EASTL/vector.h>
 #include <EASTL/version.h>
 #include <EAStdC/EASprintf.h>
-#include <stdio.h>
-
-#include <vulkan/vulkan.h>
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
-#include <imgui.h>
 
 #include "Graphics/Window.h"
 #include "Graphics/Vulkan.h"
@@ -41,9 +34,9 @@ int main( int argc, char** argv)
 {
     debug_print_versions();
 
-    Raptor::Graphics::Window window {1920, 1080, "Raptor", "1.0"};
-    Raptor::Graphics::Vulkan vulkan {&window};
-    Raptor::Debug::UI::DebugUI debugUI {&window, &vulkan};
+    Raptor::Graphics::Window window {1920, 1080, "Raptor"};
+    Raptor::Graphics::Vulkan vulkan {window};
+    Raptor::Debug::UI::DebugUI debugUI {window, vulkan};
 
     while (!window.ShouldClose())
     {

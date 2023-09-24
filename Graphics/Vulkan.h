@@ -19,11 +19,14 @@ public:
 
     Window* window;
 
+    const char* version();
+
 private:
 
+    // Vulkan Instance
     void createInstance();
     void destroyInstance();
-
+    
     VkInstance instance;
 
 }; // class Vulkan
