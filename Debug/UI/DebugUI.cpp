@@ -1,6 +1,6 @@
 #include "DebugUI.h"
 #include <EAStdC/EASprintf.h>
-#include "Assert.h"
+#include "Debug.h"
 
 namespace Raptor
 {

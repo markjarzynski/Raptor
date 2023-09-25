@@ -1,6 +1,6 @@
 #include "Vulkan.h"
 #include "Config.h"
-#include "Assert.h"
+#include "Debug.h"
 #include "Type.h"
 #include <EAStdC/EASprintf.h>
 

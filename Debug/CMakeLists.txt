@@ -7,7 +7,6 @@ target_sources(${PROJECT_NAME}
 PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/Log.cpp
 PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}/Assert.h
     ${CMAKE_CURRENT_LIST_DIR}/Debug.h
     ${CMAKE_CURRENT_LIST_DIR}/Log.h
 )
