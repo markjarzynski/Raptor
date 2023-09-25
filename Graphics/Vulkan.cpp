@@ -1,5 +1,7 @@
 #include "Vulkan.h"
 #include "Config.h"
+#include "Assert.h"
+#include "Type.h"
 #include <EAStdC/EASprintf.h>
 
 namespace Raptor
@@ -35,24 +37,15 @@ void Vulkan::createInstance()
     createInfo.pApplicationInfo = &appInfo;
 
     result = vkCreateInstance(&createInfo, nullptr, &instance);
-    check_result(result);
+    ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to create instance. code(%u).", result);
 
+    uint32 numExtensions;
 
 }
 
 void Vulkan::destroyInstance()
 {
     vkDestroyInstance(instance, nullptr);
-}
-
-static bool check_result(VkResult result)
-{
-    if (result == VK_SUCCESS)
-        return true;
-    
-    EA::StdC::Fprintf(stderr, "Vulkan error: code(%u)\n", result);
-
-    return false;
 }
 
 } // namespace Graphics

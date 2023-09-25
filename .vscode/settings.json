@@ -2,7 +2,9 @@
     "files.associations": {
         "new": "cpp",
         "xstring": "cpp",
-        "*.in": "cpp"
+        "*.in": "cpp",
+        "future": "cpp",
+        "system_error": "cpp"
     },
     "files.eol": "\n",
 }

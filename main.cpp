@@ -36,13 +36,13 @@ int main( int argc, char** argv)
 
     Raptor::Graphics::Window window {1920, 1080, "Raptor"};
     Raptor::Graphics::Vulkan vulkan {window};
-    Raptor::Debug::UI::DebugUI debugUI {window, vulkan};
+    //Raptor::Debug::UI::DebugUI debugUI {window, vulkan};
 
     while (!window.ShouldClose())
     {
         window.PollEvents();
-        debugUI.Update();
-        debugUI.Render();
+        //debugUI.Update();
+        //debugUI.Render();
     }
 
     return 0;

@@ -5,8 +5,7 @@ namespace Raptor
 namespace Debug
 {
 
-void Log(char* message);
-void Log(const char* message, ...);
+#define DEBUG_BREAK __debugbreak();
 
 } // namespace Debug
 } // namespace Raptor

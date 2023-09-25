@@ -1,5 +1,6 @@
 #include "DebugUI.h"
 #include <EAStdC/EASprintf.h>
+#include "Assert.h"
 
 namespace Raptor
 {
@@ -70,6 +71,8 @@ void DebugUI::Render()
 
 static void check_vk_result(VkResult err)
 {
+    ASSERT_MESSAGE(err == VK_SUCCESS, "[Vulkan] Error: Failed to create instance. code(%u).\n", err);
+
     if (err == 0)
         return;
     EA::StdC::Fprintf(stderr, "[vulkan] Error: VkResult = %d\n", err);

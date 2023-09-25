@@ -4,8 +4,8 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_vulkan.h"
 
-#include "../../Graphics/Window.h"
-#include "../../Graphics/Vulkan.h"
+#include "Window.h"
+#include "Vulkan.h"
 
 namespace Raptor
 {

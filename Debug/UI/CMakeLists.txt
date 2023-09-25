@@ -20,4 +20,6 @@ PRIVATE
     EASTL
     EAStdC
     imgui
+    "Raptor::Debug"
+    "Raptor::Graphics"
 )

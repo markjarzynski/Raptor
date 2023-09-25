@@ -23,4 +23,6 @@ PRIVATE
     EAStdC
     "Vulkan::Vulkan"
     imgui
+    "Raptor::Core"
+    "Raptor::Debug"
 )

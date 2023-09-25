@@ -41,6 +41,7 @@ include_directories(${PROJECT_NAME}
     ${CMAKE_CURRENT_SOURCE_DIR}/Debug/UI
 )
 
+add_subdirectory(Core)
 add_subdirectory(Debug)
 add_subdirectory(Graphics)
 add_subdirectory(Debug/UI)
@@ -54,6 +55,7 @@ PRIVATE
     glfw
     imgui
     "Vulkan::Vulkan"
+    "Raptor::Core"
     "Raptor::Debug"
     "Raptor::Graphics"
     "Raptor::Debug::UI"
