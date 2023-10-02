@@ -4,7 +4,9 @@
         "xstring": "cpp",
         "*.in": "cpp",
         "future": "cpp",
-        "system_error": "cpp"
+        "system_error": "cpp",
+        "vector": "cpp"
     },
     "files.eol": "\n",
+    "dotnet.defaultSolution": "build/Raptor.sln",
 }
