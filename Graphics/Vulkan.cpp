@@ -5,14 +5,21 @@
 #include "Defines.h"
 #include <EAStdC/EASprintf.h>
 #include <EASTL/fixed_vector.h>
+#include <EASTL/algorithm.h>
 
 namespace Raptor
 {
 namespace Graphics
 {
 
+using eastl::clamp;
+
 static const char* s_requested_layers[] = {
+#ifdef VULKAN_DEBUG
     "VK_LAYER_KHRONOS_validation",
+#else
+    "",
+#endif
 };
 
 static const char* s_requested_extensions[] = {
@@ -20,21 +27,36 @@ static const char* s_requested_extensions[] = {
 #ifdef VK_USE_PLATFORM_WIN32_KHR
     VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
 #endif
+#ifdef VULKAN_DEBUG
+    VK_EXT_DEBUG_REPORT_EXTENSION_NAME,
+    VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
+#endif
 };
+
+PFN_vkSetDebugUtilsObjectNameEXT pfnSetDebugUtilsObjectNameEXT;
+PFN_vkCmdBeginDebugUtilsLabelEXT pfnCmdBeginDebugUtilsLabelEXT;
+PFN_vkCmdEndDebugUtilsLabelEXT pfnCmdEndDebugUtilsLabelEXT;
 
 Vulkan::Vulkan(Window& window)
     : window(&window)
 {
     CreateInstance();
+    CreateDebugUtilsMessenger();
+    CreateSurface();
     CreatePhysicalDevices();
+    CreateSwapChain();
 }
 
 Vulkan::~Vulkan()
 {
+    DestroySwapChain();
     DestroyPhysicalDevices();
+    DestroySurface();
+    DestroyDebugUtilsMessenger();
     DestroyInstance();
 }
 
+//------------------------------------------------------------------------------
 void Vulkan::CreateInstance()
 {
     VkResult result;
@@ -56,6 +78,19 @@ void Vulkan::CreateInstance()
     createInfo.enabledExtensionCount = ARRAY_SIZE(s_requested_extensions);
     createInfo.ppEnabledExtensionNames = s_requested_extensions;
 
+    result = vkCreateInstance(&createInfo, allocationCallbacks, &instance);
+    ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to create instance. code(%u).", result);
+}
+
+//------------------------------------------------------------------------------
+void Vulkan::DestroyInstance()
+{
+    vkDestroyInstance(instance, allocationCallbacks);
+}
+
+//------------------------------------------------------------------------------
+void Vulkan::CreateDebugUtilsMessenger()
+{
 #ifdef VULKAN_DEBUG
     VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
     debugCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -63,30 +98,24 @@ void Vulkan::CreateInstance()
     debugCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
     debugCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
 
-    createInfo.pNext = &debugCreateInfo;
-#endif
-
-    result = vkCreateInstance(&createInfo, allocationCallbacks, &instance);
-    ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to create instance. code(%u).", result);
-
-#ifdef VULKAN_DEBUG
     uint32 numExtensions;
     vkEnumerateInstanceExtensionProperties( nullptr, &numExtensions, nullptr );
+
     eastl::vector<VkExtensionProperties> extensions(numExtensions);
-    //extensions.reserve(numExtensions);
     vkEnumerateInstanceExtensionProperties(nullptr, &numExtensions, extensions.data());
+
     for (VkExtensionProperties ext : extensions)
     {
         if (strcmp(ext.extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0)
         {
-            flags |= DebugUtilsExtensionExist;
+            uFlags |= DebugUtilsExtensionExist;
             break;
         }
     }
 
-    if (flags & Flags::DebugUtilsExtensionExist)
+    if (uFlags & Flags::DebugUtilsExtensionExist)
     {
-        PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+        auto vkCreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
         if (vkCreateDebugUtilsMessengerEXT != nullptr)
             vkCreateDebugUtilsMessengerEXT(instance, &debugCreateInfo, allocationCallbacks, &debugUtilsMessenger);
         else
@@ -96,23 +125,46 @@ void Vulkan::CreateInstance()
     {
         Raptor::Debug::Log("[Vulkan] Warning: Extension %s for debugging does not exist!", VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     }
-#endif 
+#endif
 }
 
-void Vulkan::DestroyInstance()
+//------------------------------------------------------------------------------
+void Vulkan::DestroyDebugUtilsMessenger()
 {
 #ifdef VULKAN_DEBUG
-    if (flags & Flags::DebugUtilsExtensionExist)
+    if (uFlags & Flags::DebugUtilsExtensionExist)
     {
         PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
         if (vkDestroyDebugUtilsMessengerEXT != nullptr)
             vkDestroyDebugUtilsMessengerEXT(instance, debugUtilsMessenger, allocationCallbacks);
     }
 #endif
-
-    vkDestroyInstance(instance, allocationCallbacks);
 }
 
+#ifdef VULKAN_DEBUG
+static VkBool32 DebugUtilsCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT types, const VkDebugUtilsMessengerCallbackDataEXT* callback_data, void* user_data)
+{
+    ASSERT_MESSAGE(!(severity & (VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)),
+        "Message ID: %s %i\nMessage: %s\n", 
+        callback_data->pMessageIdName, callback_data->messageIdNumber, callback_data->pMessage);
+
+    return VK_FALSE;
+}
+#endif
+
+//------------------------------------------------------------------------------
+void Vulkan::CreateSurface()
+{
+    VkResult result = glfwCreateWindowSurface(instance, window->GetGLFWwindow(), allocationCallbacks, &surface);
+    ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to create window surface.");
+}
+
+void Vulkan::DestroySurface()
+{
+    vkDestroySurfaceKHR(instance, surface, allocationCallbacks);
+}
+
+//------------------------------------------------------------------------------
 void Vulkan::CreatePhysicalDevices()
 {
     VkResult result;
@@ -122,7 +174,6 @@ void Vulkan::CreatePhysicalDevices()
     ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to enumerate physical devices. code(%u).", result);
 
     eastl::vector<VkPhysicalDevice> physicalDevices(numPhysicalDevices);   
-
     result = vkEnumeratePhysicalDevices(instance, &numPhysicalDevices, physicalDevices.data());
     ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to enumerate physical devices. code(%u).", result);
 
@@ -136,6 +187,7 @@ void Vulkan::CreatePhysicalDevices()
         {
             if (GetFamilyQueue(pDevice))
             {
+                // Prefer the first discrete gpu with present capabilities.
                 discrete = pDevice;
                 break;
             }
@@ -162,30 +214,92 @@ void Vulkan::CreatePhysicalDevices()
         ASSERT_MESSAGE(false, "[Vulkan] Error: Failed to find a suitable GPU device.");
     }
 
-    uint32 deviceExtensionCount = 0;
-    vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &deviceExtensionCount, nullptr);
-    eastl::vector<VkExtensionProperties> extensions(deviceExtensionCount);
-    vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &deviceExtensionCount, extensions.data());
+    vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
+    Raptor::Debug::Log("[Vulkan] Info: GPU Used: %s\n", physicalDeviceProperties.deviceName);
 
-    for (VkExtensionProperties extension : extensions)
+    gpuTimestampFrequency = physicalDeviceProperties.limits.timestampPeriod / (1000 * 1000);
+    //uboAlignment = physicalDeviceProperties.limits.minUniformBufferOffsetAlignment;
+    //ssboAlignment = physicalDeviceProperties.limits.minStorageBufferOffsetAlignment;
+
+    eastl::vector<const char*> deviceExtensions;
+    deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+
+    const float queuePriority[] = { 1.f };
+    VkDeviceQueueCreateInfo queueInfo[1] = {};
+    queueInfo[0].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueInfo[0].queueFamilyIndex = mainQueueFamilyIndex;
+    queueInfo[0].queueCount = 1;
+    queueInfo[0].pQueuePriorities = queuePriority;
+
+    VkPhysicalDeviceFeatures2 physicalFeatures2 {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+    vkGetPhysicalDeviceFeatures2(physicalDevice, &physicalFeatures2);
+    
+    VkDeviceCreateInfo deviceCreateInfo {};
+    deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    deviceCreateInfo.queueCreateInfoCount = sizeof(queueInfo) / sizeof(queueInfo[0]);
+    deviceCreateInfo.pQueueCreateInfos = queueInfo;
+    deviceCreateInfo.enabledExtensionCount = deviceExtensions.size();
+    deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
+    deviceCreateInfo.pNext = &physicalFeatures2;
+
+    result = vkCreateDevice(physicalDevice, &deviceCreateInfo, allocationCallbacks, &device);
+    ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to create logical device.");
+
+    if (uFlags |= Flags::DebugUtilsExtensionExist)
     {
-        if (strcmp(extension.extensionName, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME) == 0)
-        {
-            flags |= Flags::DynamicRenderingExtensionExists;
-            break;
-        }
+        pfnSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(device, "vkSetDebugUtilsObjectNameEXT");
+        pfnCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetDeviceProcAddr(device, "vkCmdBeginDebugUtilsLabelEXT");
+        pfnCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetDeviceProcAddr(device, "vkCmdEndDebugUtilsLabelExt");
     }
 
-    vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
-
-    Raptor::Debug::Log("[Vulkan] Info: GPU Used: %s\n", physicalDeviceProperties.deviceName);
+    vkGetDeviceQueue(device, mainQueueFamilyIndex, 0, &queue);
 }
 
+//------------------------------------------------------------------------------
 void Vulkan::DestroyPhysicalDevices()
 {
+    vkDestroyDevice(device, allocationCallbacks);
+}
+
+//------------------------------------------------------------------------------
+void Vulkan::CreateSwapChain()
+{
+    VkResult result;
+    VkBool32 surfaceSupported;
+
+    result = vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, mainQueueFamilyIndex, surface, &surfaceSupported);
+    ASSERT(result == VK_SUCCESS, "[Vulkan] Error: No WSI support on physical device 0.");
+
+    VkSurfaceCapabilitiesKHR surfaceCapabilities;
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities);
+
+    VkExtent2D swapchainExtent = surfaceCapabilities.currentExtent;
+    if (swapchainExtent.width == UINT32_MAX)
+    {
+        swapchainExtent.width = clamp(swapchainExtent.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
+        swapchainExtent.height = clamp(swapchainExtent.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
+    }
+
+    Raptor::Debug::Log("[Vulkan] Info: Create swapchain %u %u, min image %u.", swapchainExtent.width, swapchainExtent.height, surfaceCapabilities.minImageCount);
+
+    swapchainWidth = (uint16)swapchainExtent.width;
+    swapchainHeight = (uint16)swapchainExtent.height;
+
+    VkSwapchainCreateInfoKHR swapchainCreateInfo {};
+    swapchainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    swapchainCreateInfo.surface = surface;
+    swapchainCreateInfo.minImageCount = swapchainImageCount;
 
 }
 
+//------------------------------------------------------------------------------
+void Vulkan::DestroySwapChain()
+{
+    
+}
+
+
+//------------------------------------------------------------------------------
 VkBool32 Vulkan::GetFamilyQueue(VkPhysicalDevice pDevice)
 {
     uint32 familyQueueCount = 0;
@@ -196,15 +310,15 @@ VkBool32 Vulkan::GetFamilyQueue(VkPhysicalDevice pDevice)
 
     VkBool32 surfaceSupported = VK_FALSE;
 
-    for (uint32 i = 0; i < queueFamilies.size(); i++)
+    for (uint32 iQueueFamily = 0; iQueueFamily < queueFamilies.size(); ++iQueueFamily)
     {
-        if (queueFamilies[i].queueCount > 0 && queueFamilies[i].queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT))
+        if (queueFamilies[iQueueFamily].queueCount > 0 && queueFamilies[iQueueFamily].queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT))
         {
-            vkGetPhysicalDeviceSurfaceSupportKHR(pDevice, i, surface, &surfaceSupported);
+            vkGetPhysicalDeviceSurfaceSupportKHR(pDevice, iQueueFamily, surface, &surfaceSupported);
 
             if (surfaceSupported)
             {
-                mainQueueFamilyIndex = i;
+                mainQueueFamilyIndex = iQueueFamily;
                 break;
             }
         }
@@ -213,27 +327,7 @@ VkBool32 Vulkan::GetFamilyQueue(VkPhysicalDevice pDevice)
     return surfaceSupported;
 }
 
-void Vulkan::CreateSurface()
-{
-    VkResult result = glfwCreateWindowSurface(instance, window->GetGLFWwindow(), allocationCallbacks, &surface);
-    ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to create window surface.");
-}
-
-void Vulkan::DestroySurface()
-{
-    vkDestroySurfaceKHR(instance, surface, allocationCallbacks);
-}
-
-#ifdef VULKAN_DEBUG
-static VkBool32 DebugUtilsCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT types, const VkDebugUtilsMessengerCallbackDataEXT* callback_data, void* user_data)
-{
-    ASSERT_MESSAGE(!(severity & (VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)),
-        "Message ID: %s %i\nMessage: %s\n", 
-        callback_data->pMessageIdName, callback_data->messageIdNumber, callback_data->pMessage);
-
-    return VK_FALSE;
-}
-#endif
+//------------------------------------------------------------------------------
 
 } // namespace Graphics
 } // namespace Raptor

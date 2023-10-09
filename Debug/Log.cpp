@@ -11,12 +11,12 @@ void Log(char* message)
     EA::StdC::Fprintf(stderr, message);
 }
 
-void Log(const char* message, ...)
+void Log(const char* message...)
 {
 	va_list arguments;
 	va_start(arguments, message);
 
-    EA::StdC::Fprintf(stderr, message, arguments);
+    EA::StdC::Vfprintf(stderr, message, arguments);
 
 	va_end(arguments);
 }

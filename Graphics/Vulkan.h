@@ -3,7 +3,9 @@
 #if (_MSC_VER)
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
+#define VK_ENABLE_BETA_EXTENSIONS
 #include <vulkan/vulkan.h>
+
 #include "Window.h"
 #include "Debug.h"
 #include "Log.h"
@@ -35,11 +37,17 @@ private:
     void CreateInstance();
     void DestroyInstance();
 
-    void CreatePhysicalDevices();
-    void DestroyPhysicalDevices();
+    void CreateDebugUtilsMessenger();
+    void DestroyDebugUtilsMessenger();
 
     void CreateSurface();
     void DestroySurface();
+
+    void CreatePhysicalDevices();
+    void DestroyPhysicalDevices();
+
+    void CreateSwapChain();
+    void DestroySwapChain();
 
     VkBool32 GetFamilyQueue(VkPhysicalDevice pDevice);
 
@@ -52,13 +60,20 @@ private:
     VkPhysicalDeviceProperties physicalDeviceProperties;
     VkSurfaceKHR surface;
     uint32 mainQueueFamilyIndex;
+    VkDevice device;
+    VkQueue queue;
+    VkSwapchainKHR swapchain;
+    uint16 swapchainWidth;
+    uint16 swapchainHeight;
+    uint32 swapchainImageCount;
+
+    float gpuTimestampFrequency;
 
     enum Flags
     {
         DebugUtilsExtensionExist        = 0x1 << 0,
-        DynamicRenderingExtensionExists = 0x1 << 1,
     };
-    uint32 flags = 0u;
+    uint32 uFlags = 0u;
 
 }; // class Vulkan
 

@@ -5,7 +5,10 @@
         "*.in": "cpp",
         "future": "cpp",
         "system_error": "cpp",
-        "vector": "cpp"
+        "vector": "cpp",
+        "regex": "cpp",
+        "xiosbase": "cpp",
+        "algorithm": "cpp"
     },
     "files.eol": "\n",
     "dotnet.defaultSolution": "build/Raptor.sln",
