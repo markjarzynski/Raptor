@@ -267,8 +267,59 @@ void Vulkan::CreateSwapChain()
     VkResult result;
     VkBool32 surfaceSupported;
 
+    // Select surface format.
+    const VkFormat surfaceImageFormats[] = {VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_B8G8R8_UNORM, VK_FORMAT_R8G8B8_UNORM};
+    const VkColorSpaceKHR surfaceColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+
+    uint32 surfaceSupportedFormatsCount;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &surfaceSupportedFormatsCount, NULL);
+    eastl::vector<VkSurfaceFormatKHR> surfaceSupportedFormats(surfaceSupportedFormatsCount);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &surfaceSupportedFormatsCount, surfaceSupportedFormats.data());
+
+    // Check for supported formats.
+    const uint32 surfaceImageFormatsCount = ARRAY_SIZE(surfaceImageFormats);
+    for (uint32 iImageFormats = 0; iImageFormats < surfaceImageFormatsCount; iImageFormats++)
+    {
+        for (uint32 iSupportedFormats = 0; iSupportedFormats < surfaceSupportedFormatsCount; iSupportedFormats++)
+        {
+            if (surfaceSupportedFormats[iSupportedFormats].format == surfaceImageFormats[iImageFormats] &&
+                surfaceSupportedFormats[iSupportedFormats].colorSpace == surfaceColorSpace)
+            {
+                surfaceFormat = surfaceSupportedFormats[iSupportedFormats];
+                goto SUPPORTED_SURFACE_FORMAT_FOUND;
+            }
+        }
+    }
+
+    // Default to the first surface format supported.
+    surfaceFormat = surfaceSupportedFormats[0];
+    SUPPORTED_SURFACE_FORMAT_FOUND:
+
+    // Set present mode
+    uint32 surfacePresentModesCount;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &surfacePresentModesCount, NULL);
+    eastl::vector<VkPresentModeKHR> surfacePresentModes(surfacePresentModesCount);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &surfacePresentModesCount, surfacePresentModes.data());
+
+    VkPresentModeKHR requestedPresentMode = VK_PRESENT_MODE_FIFO_KHR;
+    for (uint32 iPresentMode = 0; iPresentMode < surfacePresentModesCount; iPresentMode++)
+    {
+        if (requestedPresentMode == surfacePresentModes[iPresentMode])
+        {
+            presentMode = requestedPresentMode;
+            goto REQUESTED_PRESENT_MODE_FOUND;
+        }
+    }
+
+    // Default to VK_PRESENT_MODE_FIFO_KHR if the requested present mode is not found.
+    presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    REQUESTED_PRESENT_MODE_FOUND:
+
+    swapchainImageCount = 3;
+
+    // Create swapchain
     result = vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, mainQueueFamilyIndex, surface, &surfaceSupported);
-    ASSERT(result == VK_SUCCESS, "[Vulkan] Error: No WSI support on physical device 0.");
+    ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: No WSI support on physical device 0.");
 
     VkSurfaceCapabilitiesKHR surfaceCapabilities;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities);
@@ -289,13 +340,51 @@ void Vulkan::CreateSwapChain()
     swapchainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     swapchainCreateInfo.surface = surface;
     swapchainCreateInfo.minImageCount = swapchainImageCount;
+    swapchainCreateInfo.imageFormat = surfaceFormat.format;
+    swapchainCreateInfo.imageExtent = swapchainExtent;
+    swapchainCreateInfo.clipped = VK_TRUE;
+    swapchainCreateInfo.imageArrayLayers = 1;
+    swapchainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    swapchainCreateInfo.preTransform = surfaceCapabilities.currentTransform;
+    swapchainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    swapchainCreateInfo.presentMode = presentMode;
 
+    result = vkCreateSwapchainKHR(device, &swapchainCreateInfo, 0, &swapchain);
+    ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to create swapchain.");
+
+    vkGetSwapchainImagesKHR(device, swapchain, &swapchainImageCount, NULL);
+    vkGetSwapchainImagesKHR(device, swapchain, &swapchainImageCount, swapchainImages);
+
+    for (uint32 iImage = 0; iImage < swapchainImageCount; iImage++)
+    {
+        VkImageViewCreateInfo viewInfo {};
+        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.format = surfaceFormat.format;
+        viewInfo.image = swapchainImages[iImage];
+        viewInfo.subresourceRange.levelCount = 1;
+        viewInfo.subresourceRange.layerCount = 1;
+        viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        viewInfo.components.r = VK_COMPONENT_SWIZZLE_R;
+        viewInfo.components.g = VK_COMPONENT_SWIZZLE_G;
+        viewInfo.components.b = VK_COMPONENT_SWIZZLE_B;
+        viewInfo.components.a = VK_COMPONENT_SWIZZLE_A;
+
+        result = vkCreateImageView(device, &viewInfo, allocationCallbacks, &swapchainImageViews[iImage]);
+        ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to create Image View %d out of %d.", iImage, swapchainImageCount);
+    }
 }
 
 //------------------------------------------------------------------------------
 void Vulkan::DestroySwapChain()
 {
-    
+    for (uint32 iImage = 0; iImage < swapchainImageCount; iImage++)
+    {
+        vkDestroyImageView(device, swapchainImageViews[iImage], allocationCallbacks);
+        //vkDestroyFramebuffer(device, swapchainFramebuffers[iImage], allocationCallbacks);
+    }
+    vkDestroySwapchainKHR(device, swapchain, allocationCallbacks);
 }
 
 

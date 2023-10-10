@@ -59,6 +59,8 @@ private:
     VkPhysicalDevice physicalDevice;
     VkPhysicalDeviceProperties physicalDeviceProperties;
     VkSurfaceKHR surface;
+    VkSurfaceFormatKHR surfaceFormat;
+    VkPresentModeKHR presentMode;
     uint32 mainQueueFamilyIndex;
     VkDevice device;
     VkQueue queue;
@@ -66,6 +68,12 @@ private:
     uint16 swapchainWidth;
     uint16 swapchainHeight;
     uint32 swapchainImageCount;
+    static const uint32 MAX_SWAPCHAIN_IMAGES = 3;
+    VkImage swapchainImages[MAX_SWAPCHAIN_IMAGES];
+    VkImageView swapchainImageViews[MAX_SWAPCHAIN_IMAGES];
+    VkFramebuffer swapchainFramebuffers[MAX_SWAPCHAIN_IMAGES];
+
+
 
     float gpuTimestampFrequency;
 
