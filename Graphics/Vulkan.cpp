@@ -1,3 +1,4 @@
+#define VMA_IMPLEMENTATION
 #include "Vulkan.h"
 #include "Config.h"
 #include "Debug.h"
@@ -44,11 +45,19 @@ Vulkan::Vulkan(Window& window)
     CreateDebugUtilsMessenger();
     CreateSurface();
     CreatePhysicalDevices();
+    SetSurfaceFormat();
+    SetPresentMode();
     CreateSwapChain();
+    CreateVmaAllocator();
+    CreatePools();
+    CreateSemaphores();
 }
 
 Vulkan::~Vulkan()
 {
+    DestroySemaphores();
+    DestroyPools();
+    DestroyVmaAllocator();
     DestroySwapChain();
     DestroyPhysicalDevices();
     DestroySurface();
@@ -261,13 +270,8 @@ void Vulkan::DestroyPhysicalDevices()
     vkDestroyDevice(device, allocationCallbacks);
 }
 
-//------------------------------------------------------------------------------
-void Vulkan::CreateSwapChain()
+void Vulkan::SetSurfaceFormat()
 {
-    VkResult result;
-    VkBool32 surfaceSupported;
-
-    // Select surface format.
     const VkFormat surfaceImageFormats[] = {VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_B8G8R8_UNORM, VK_FORMAT_R8G8B8_UNORM};
     const VkColorSpaceKHR surfaceColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
 
@@ -286,34 +290,43 @@ void Vulkan::CreateSwapChain()
                 surfaceSupportedFormats[iSupportedFormats].colorSpace == surfaceColorSpace)
             {
                 surfaceFormat = surfaceSupportedFormats[iSupportedFormats];
-                goto SUPPORTED_SURFACE_FORMAT_FOUND;
+                return;
             }
         }
     }
 
     // Default to the first surface format supported.
     surfaceFormat = surfaceSupportedFormats[0];
-    SUPPORTED_SURFACE_FORMAT_FOUND:
+}
 
-    // Set present mode
+bool Vulkan::SetPresentMode(VkPresentModeKHR requestedPresentMode)
+{
     uint32 surfacePresentModesCount;
     vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &surfacePresentModesCount, NULL);
     eastl::vector<VkPresentModeKHR> surfacePresentModes(surfacePresentModesCount);
     vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &surfacePresentModesCount, surfacePresentModes.data());
 
-    VkPresentModeKHR requestedPresentMode = VK_PRESENT_MODE_FIFO_KHR;
     for (uint32 iPresentMode = 0; iPresentMode < surfacePresentModesCount; iPresentMode++)
     {
         if (requestedPresentMode == surfacePresentModes[iPresentMode])
         {
             presentMode = requestedPresentMode;
-            goto REQUESTED_PRESENT_MODE_FOUND;
+            Raptor::Debug::Log("[Vulkan] Info: Set present mode to: %d.", presentMode);
+            return true;
         }
     }
 
     // Default to VK_PRESENT_MODE_FIFO_KHR if the requested present mode is not found.
     presentMode = VK_PRESENT_MODE_FIFO_KHR;
-    REQUESTED_PRESENT_MODE_FOUND:
+    Raptor::Debug::Log("[Vulkan] Warning: Could not set present mode to requested present mode: %d, defaulting to present mode: %d.", requestedPresentMode, presentMode);
+    return false;
+}
+
+//------------------------------------------------------------------------------
+void Vulkan::CreateSwapChain()
+{
+    VkResult result;
+    VkBool32 surfaceSupported;
 
     swapchainImageCount = 3;
 
@@ -386,6 +399,123 @@ void Vulkan::DestroySwapChain()
     }
     vkDestroySwapchainKHR(device, swapchain, allocationCallbacks);
 }
+
+//------------------------------------------------------------------------------
+void Vulkan::CreateVmaAllocator()
+{
+    VmaAllocatorCreateInfo allocatorInfo = {};
+    allocatorInfo.physicalDevice = physicalDevice;
+    allocatorInfo.device = device;
+    allocatorInfo.instance = instance;
+
+    VkResult result = vmaCreateAllocator(&allocatorInfo, &vmaAllocator);
+    ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to create VMA Allocator.");
+}
+
+//------------------------------------------------------------------------------
+void Vulkan::DestroyVmaAllocator()
+{
+    vmaDestroyAllocator(vmaAllocator);
+}
+
+//------------------------------------------------------------------------------
+void Vulkan::CreatePools()
+{
+    VkResult result;
+
+    const uint32 GLOBAL_POOL_ELEMENTS = 128;
+
+    VkDescriptorPoolSize poolSizes[] = 
+    {
+        { VK_DESCRIPTOR_TYPE_SAMPLER,                GLOBAL_POOL_ELEMENTS },
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, GLOBAL_POOL_ELEMENTS },
+        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          GLOBAL_POOL_ELEMENTS },
+        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          GLOBAL_POOL_ELEMENTS },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   GLOBAL_POOL_ELEMENTS },
+        { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   GLOBAL_POOL_ELEMENTS },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         GLOBAL_POOL_ELEMENTS },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         GLOBAL_POOL_ELEMENTS },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, GLOBAL_POOL_ELEMENTS },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, GLOBAL_POOL_ELEMENTS },
+        { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,       GLOBAL_POOL_ELEMENTS },
+    };
+
+    VkDescriptorPoolCreateInfo descriptorPoolInfo = {};
+    descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    descriptorPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+    descriptorPoolInfo.maxSets = GLOBAL_POOL_ELEMENTS * ARRAY_SIZE(poolSizes);
+    descriptorPoolInfo.poolSizeCount = (uint32)ARRAY_SIZE(poolSizes);
+    descriptorPoolInfo.pPoolSizes = poolSizes;
+
+    result = vkCreateDescriptorPool(device, &descriptorPoolInfo, allocationCallbacks, &descriptorPool);
+    ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to create descriptor pool.");
+
+    const uint32 GPU_TIME_QUERIES_PER_FRAME = 32;
+
+    VkQueryPoolCreateInfo queryPoolInfo = {};
+    queryPoolInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+    queryPoolInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+    queryPoolInfo.queryCount = GPU_TIME_QUERIES_PER_FRAME * 2u * MAX_FRAMES;
+
+    result = vkCreateQueryPool(device, &queryPoolInfo, allocationCallbacks, &queryPool);
+    ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to create query pool.");
+
+    // init pools???
+}
+
+//------------------------------------------------------------------------------
+void Vulkan::DestroyPools()
+{
+    vkDestroyQueryPool(device, queryPool, allocationCallbacks);
+    vkDestroyDescriptorPool(device, descriptorPool, allocationCallbacks);
+}
+
+//------------------------------------------------------------------------------
+void Vulkan::CreateSemaphores()
+{
+    VkResult result;
+
+    VkSemaphoreCreateInfo semaphoreInfo = {};
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    result = vkCreateSemaphore(device, &semaphoreInfo, allocationCallbacks, &imageAcquiredSemaphore);
+    ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to create semaphore.");
+
+    VkFenceCreateInfo fenceInfo = {};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+    for (uint32 i = 0; i < MAX_SWAPCHAIN_IMAGES; i++)
+    {
+        result = vkCreateSemaphore(device, &semaphoreInfo, allocationCallbacks, &renderCompleteSemaphore[i]);
+        ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to create semaphore %d.", i);
+
+        result = vkCreateFence(device, &fenceInfo, allocationCallbacks, &commandBufferExecutedFence[i]);
+        ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to create fence %d.", i);
+    }
+
+
+}
+
+//------------------------------------------------------------------------------
+void Vulkan::DestroySemaphores()
+{
+    for (uint32 i = 0; i < MAX_SWAPCHAIN_IMAGES; i++)
+    {
+        vkDestroyFence(device, commandBufferExecutedFence[i], allocationCallbacks);
+        vkDestroySemaphore(device, renderCompleteSemaphore[i], allocationCallbacks);
+    }
+
+    vkDestroySemaphore(device, imageAcquiredSemaphore, allocationCallbacks);
+}
+//------------------------------------------------------------------------------
+void Vulkan::CreateSampler(){}
+//------------------------------------------------------------------------------
+void Vulkan::CreateBuffer(){}
+//------------------------------------------------------------------------------
+void Vulkan::CreateTexture(){}
+//------------------------------------------------------------------------------
+void Vulkan::CreateRenderPass(){}
 
 
 //------------------------------------------------------------------------------

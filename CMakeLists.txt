@@ -24,6 +24,8 @@ find_package(GLFW REQUIRED)
 include(EASTL)
 include(ImGui)
 
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/Common/External/VulkanMemoryAllocator)
+
 #find_package(IMGUI REQUIRED)
 
 add_executable(${PROJECT_NAME}

@@ -6,6 +6,8 @@
 #define VK_ENABLE_BETA_EXTENSIONS
 #include <vulkan/vulkan.h>
 
+#include <VMA/vk_mem_alloc.h>
+
 #include "Window.h"
 #include "Debug.h"
 #include "Log.h"
@@ -17,6 +19,7 @@ namespace Raptor
 {
 namespace Graphics
 {
+
 class Vulkan
 {
 public:
@@ -46,8 +49,27 @@ private:
     void CreatePhysicalDevices();
     void DestroyPhysicalDevices();
 
+    void SetSurfaceFormat();
+    bool SetPresentMode(VkPresentModeKHR requestedPresentMode = VK_PRESENT_MODE_FIFO_KHR);
+
     void CreateSwapChain();
     void DestroySwapChain();
+
+    void CreateVmaAllocator();
+    void DestroyVmaAllocator();
+
+    void CreatePools();
+    void DestroyPools();
+
+    void CreateSemaphores();
+    void DestroySemaphores();
+
+
+
+    void CreateSampler();
+    void CreateBuffer();
+    void CreateTexture();
+    void CreateRenderPass();
 
     VkBool32 GetFamilyQueue(VkPhysicalDevice pDevice);
 
@@ -72,8 +94,13 @@ private:
     VkImage swapchainImages[MAX_SWAPCHAIN_IMAGES];
     VkImageView swapchainImageViews[MAX_SWAPCHAIN_IMAGES];
     VkFramebuffer swapchainFramebuffers[MAX_SWAPCHAIN_IMAGES];
-
-
+    VmaAllocator vmaAllocator;
+    VkDescriptorPool descriptorPool;
+    VkQueryPool queryPool;
+    static const uint32 MAX_FRAMES = 3;
+    VkSemaphore imageAcquiredSemaphore;
+    VkSemaphore renderCompleteSemaphore[MAX_SWAPCHAIN_IMAGES];
+    VkFence commandBufferExecutedFence[MAX_SWAPCHAIN_IMAGES];
 
     float gpuTimestampFrequency;
 
