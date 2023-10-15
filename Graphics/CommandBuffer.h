@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Type.h"
+#include <vulkan/vulkan.h>
 
 namespace Raptor
 {
@@ -10,12 +11,19 @@ class CommandBuffer
 {
 public:
 
+    enum Flags : uint32
+    {
+        None        = 0x0,
+        isRecording = 0x1,
+        isBaked     = 0x1 << 1,
+    };
+
     enum QueueType
     {
         Graphics, Compute, CopyTransfer, Max
     };
     
-    CommandBuffer(QueueType type, uint32 bufferSize, uint32 submitSize, Flags flags);
+    CommandBuffer(QueueType type, uint32 bufferSize, uint32 submitSize, Flags flags = Flags::None);
     ~CommandBuffer();
 
     //void barrier(const ExecutionBarrier& barrier);
@@ -40,13 +48,7 @@ private:
 
     VkClearValue clears[2]; // 0 color, 1 depth
 
-    enum Flags
-    {
-        None        = 0x0,
-        isRecording = 0x1,
-        isBaked     = 0x1 << 1,
-    };
-    Flags uFlags = Flags::None;
+    uint32 uFlags = Flags::None;
 
     uint32 handle;
 
