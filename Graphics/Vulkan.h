@@ -5,13 +5,14 @@
 #endif
 #define VK_ENABLE_BETA_EXTENSIONS
 #include <vulkan/vulkan.h>
-
 #include <VMA/vk_mem_alloc.h>
+#include <EASTL/allocator.h>
 
 #include "Window.h"
 #include "Debug.h"
 #include "Log.h"
 #include "Type.h"
+#include "GPUTimestampManager.h"
 
 #define VULKAN_DEBUG
 
@@ -22,15 +23,18 @@ namespace Graphics
 
 class Vulkan
 {
+    using Allocator = eastl::allocator;
+
 public:
 
-    Vulkan(Window& window);
+    Vulkan(Window& window, Allocator& allocator);
     ~Vulkan();
 
     Vulkan(const Vulkan &) = delete;
     Vulkan &operator=(const Vulkan &) = delete;
 
     Window* window;
+    Allocator* allocator;
 
     const char* version();
 
@@ -64,7 +68,8 @@ private:
     void CreateSemaphores();
     void DestroySemaphores();
 
-
+    void CreateGPUTimestampManager();
+    void DestroyGPUTimestampManager();
 
     void CreateSampler();
     void CreateBuffer();
@@ -101,6 +106,8 @@ private:
     VkSemaphore imageAcquiredSemaphore;
     VkSemaphore renderCompleteSemaphore[MAX_SWAPCHAIN_IMAGES];
     VkFence commandBufferExecutedFence[MAX_SWAPCHAIN_IMAGES];
+    static const uint32 QUERIES_PER_FRAME = 32;
+    GPUTimestampManager* gpuTimestampManager = nullptr;
 
     float gpuTimestampFrequency;
 

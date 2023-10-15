@@ -1,11 +1,12 @@
 #include "Config.h"
 
 #include <EASTL/version.h>
+#include <EASTL/allocator.h>
 #include <EAStdC/EASprintf.h>
 
-#include "Graphics/Window.h"
-#include "Graphics/Vulkan.h"
-#include "Debug/UI/DebugUI.h"
+#include "Window.h"
+#include "Vulkan.h"
+#include "DebugUI.h"
 
 // These new operators are required by EASTL
 void* __cdecl operator new[](size_t size, const char* pName, int flags, unsigned debugFlags, const char* file, int line)
@@ -34,8 +35,11 @@ int main( int argc, char** argv)
 {
     debug_print_versions();
 
+    using Allocator = eastl::allocator;
+    Allocator allocator {};
+
     Raptor::Graphics::Window window {1920, 1080, "Raptor"};
-    Raptor::Graphics::Vulkan vulkan {window};
+    Raptor::Graphics::Vulkan vulkan {window, allocator};
     //Raptor::Debug::UI::DebugUI debugUI {window, vulkan};
 
     while (!window.ShouldClose())

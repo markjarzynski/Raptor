@@ -4,6 +4,7 @@
 #include "Debug.h"
 //#include "Type.h"
 #include "Defines.h"
+#include "CommandBuffer.h"
 #include <EAStdC/EASprintf.h>
 #include <EASTL/fixed_vector.h>
 #include <EASTL/algorithm.h>
@@ -38,8 +39,8 @@ PFN_vkSetDebugUtilsObjectNameEXT pfnSetDebugUtilsObjectNameEXT;
 PFN_vkCmdBeginDebugUtilsLabelEXT pfnCmdBeginDebugUtilsLabelEXT;
 PFN_vkCmdEndDebugUtilsLabelEXT pfnCmdEndDebugUtilsLabelEXT;
 
-Vulkan::Vulkan(Window& window)
-    : window(&window)
+Vulkan::Vulkan(Window& window, Allocator& allocator)
+    : window(&window), allocator(&allocator)
 {
     CreateInstance();
     CreateDebugUtilsMessenger();
@@ -51,10 +52,12 @@ Vulkan::Vulkan(Window& window)
     CreateVmaAllocator();
     CreatePools();
     CreateSemaphores();
+    CreateGPUTimestampManager();
 }
 
 Vulkan::~Vulkan()
 {
+    DestroyGPUTimestampManager();
     DestroySemaphores();
     DestroyPools();
     DestroyVmaAllocator();
@@ -311,7 +314,7 @@ bool Vulkan::SetPresentMode(VkPresentModeKHR requestedPresentMode)
         if (requestedPresentMode == surfacePresentModes[iPresentMode])
         {
             presentMode = requestedPresentMode;
-            Raptor::Debug::Log("[Vulkan] Info: Set present mode to: %d.", presentMode);
+            Raptor::Debug::Log("[Vulkan] Info: Set present mode to: %d.\n", presentMode);
             return true;
         }
     }
@@ -344,7 +347,7 @@ void Vulkan::CreateSwapChain()
         swapchainExtent.height = clamp(swapchainExtent.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
     }
 
-    Raptor::Debug::Log("[Vulkan] Info: Create swapchain %u %u, min image %u.", swapchainExtent.width, swapchainExtent.height, surfaceCapabilities.minImageCount);
+    Raptor::Debug::Log("[Vulkan] Info: Create swapchain %u %u, min image %u.\n", swapchainExtent.width, swapchainExtent.height, surfaceCapabilities.minImageCount);
 
     swapchainWidth = (uint16)swapchainExtent.width;
     swapchainHeight = (uint16)swapchainExtent.height;
@@ -508,6 +511,21 @@ void Vulkan::DestroySemaphores()
 
     vkDestroySemaphore(device, imageAcquiredSemaphore, allocationCallbacks);
 }
+
+//------------------------------------------------------------------------------
+void Vulkan::CreateGPUTimestampManager()
+{
+    uint8* memory = (uint8*)allocator->allocate(sizeof(GPUTimestampManager) + sizeof(CommandBuffer*) * 128);
+    //gpuTimestampManager = (GPUTimestampManager*)memory;
+    gpuTimestampManager = new (memory)GPUTimestampManager(allocator, QUERIES_PER_FRAME, MAX_FRAMES);
+}
+
+//------------------------------------------------------------------------------
+void Vulkan::DestroyGPUTimestampManager()
+{
+
+}
+
 //------------------------------------------------------------------------------
 void Vulkan::CreateSampler(){}
 //------------------------------------------------------------------------------

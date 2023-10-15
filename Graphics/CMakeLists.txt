@@ -5,9 +5,13 @@ add_library("Raptor::${PROJECT_NAME}" ALIAS ${PROJECT_NAME})
 
 target_sources(${PROJECT_NAME}
 PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/CommandBuffer.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/GPUTimestampManager.cpp
     ${CMAKE_CURRENT_LIST_DIR}/Vulkan.cpp
     ${CMAKE_CURRENT_LIST_DIR}/Window.cpp
 PUBLIC
+    ${CMAKE_CURRENT_LIST_DIR}/CommandBuffer.h
+    ${CMAKE_CURRENT_LIST_DIR}/GPUTimestampManager.h
     ${CMAKE_CURRENT_LIST_DIR}/Vulkan.h
     ${CMAKE_CURRENT_LIST_DIR}/Window.h
 )
