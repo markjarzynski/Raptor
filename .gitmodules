@@ -7,6 +7,6 @@
 [submodule "Common/External/EASTL"]
 	path = Common/External/EASTL
 	url = git@github.com:electronicarts/EASTL.git
-[submodule ".\\Common\\External\\VulkanMemoryAllocator"]
-	path = .\\Common\\External\\VulkanMemoryAllocator
+[submodule "Common/External/VulkanMemoryAllocator"]
+	path = Common/External/VulkanMemoryAllocator
 	url = git@github.com:GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
