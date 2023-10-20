@@ -11,8 +11,13 @@
 #include "Window.h"
 #include "Debug.h"
 #include "Log.h"
-#include "Type.h"
+#include "Types.h"
 #include "GPUTimestampManager.h"
+#include "Buffer.h"
+#include "Texture.h"
+#include "Sampler.h"
+#include "RenderPass.h"
+#include "ResourcePool.h"
 
 #define VULKAN_DEBUG
 
@@ -110,6 +115,16 @@ private:
     GPUTimestampManager* gpuTimestampManager = nullptr;
 
     float gpuTimestampFrequency;
+
+    ResourcePool buffers;
+    ResourcePool textures;
+    ResourcePool pipelines;
+    ResourcePool samplers;
+    ResourcePool descriptorSetLayouts;
+    ResourcePool descriptorSets;
+    ResourcePool renderPasses;
+    ResourcePool commandBuffers;
+    ResourcePool sahders;
 
     enum Flags
     {

@@ -16,6 +16,14 @@ CommandBuffer::~CommandBuffer()
     uFlags &= ~Flags::isRecording;
 }
 
+void CommandBuffer::bindPass(RenderPassHandle handle)
+{
+    uFlags |= Flags::isRecording;
+
+    //RenderPass* renderPass = device->access
+
+}
+
 void CommandBuffer::reset()
 {
     // isRecording = false;

@@ -1,12 +1,14 @@
 #pragma once
 
-#include "Type.h"
 #include <vulkan/vulkan.h>
+#include "Types.h"
+#include "Resources.h"
 
 namespace Raptor
 {
 namespace Graphics
 {
+
 class CommandBuffer
 {
 public:
@@ -25,6 +27,8 @@ public:
     
     CommandBuffer(QueueType type, uint32 bufferSize, uint32 submitSize, Flags flags = Flags::None);
     ~CommandBuffer();
+
+    void CommandBuffer::bindPass(RenderPassHandle handle);
 
     //void barrier(const ExecutionBarrier& barrier);
 

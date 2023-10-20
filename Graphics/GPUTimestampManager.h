@@ -1,7 +1,7 @@
 #pragma once
 
 #include <EASTL/allocator.h>
-#include "Type.h"
+#include "Types.h"
 
 namespace Raptor
 {

@@ -2,7 +2,7 @@
 #include "Vulkan.h"
 #include "Config.h"
 #include "Debug.h"
-//#include "Type.h"
+//#include "Types.h"
 #include "Defines.h"
 #include "CommandBuffer.h"
 #include <EAStdC/EASprintf.h>
@@ -463,12 +463,26 @@ void Vulkan::CreatePools()
     result = vkCreateQueryPool(device, &queryPoolInfo, allocationCallbacks, &queryPool);
     ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to create query pool.");
 
-    // init pools???
+    // init pools
+    buffers.init(allocator, 4096, sizeof(Buffer));
+    textures.init(allocator, 512, sizeof(Texture));
+    renderPasses.init(allocator, 256, sizeof(RenderPass));
+    //descriptorSetLayouts.init(allocator, 128, sizeof(DescriptorSetLayout));
+    //pipelines.init(allocator, 128, sizeof(Pipeline));
+    //shaders.init(allocator, 128, sizeof(ShaderState));
+    //descriptorSets.init(allocator, 256, sizeof(DescriptorSet));
+    samplers.init(allocator, 32, sizeof(Sampler));
+
 }
 
 //------------------------------------------------------------------------------
 void Vulkan::DestroyPools()
 {
+    samplers.shutdown();
+    renderPasses.shutdown();
+    textures.shutdown();
+    buffers.shutdown();
+
     vkDestroyQueryPool(device, queryPool, allocationCallbacks);
     vkDestroyDescriptorPool(device, descriptorPool, allocationCallbacks);
 }

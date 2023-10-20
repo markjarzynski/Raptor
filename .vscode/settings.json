@@ -19,7 +19,9 @@
         "xlocbuf": "cpp",
         "xlocinfo": "cpp",
         "xlocmon": "cpp",
-        "xutility": "cpp"
+        "xutility": "cpp",
+        "chrono": "cpp",
+        "variant": "cpp"
     },
     "files.eol": "\n",
     "dotnet.defaultSolution": "build/Raptor.sln",
