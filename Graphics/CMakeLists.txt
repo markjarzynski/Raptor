@@ -3,9 +3,6 @@ project(Graphics)
 add_library(${PROJECT_NAME})
 add_library("Raptor::${PROJECT_NAME}" ALIAS ${PROJECT_NAME})
 
-message(STATUS "VulkanMemoryAllocator: ${VulkanMemoryAllocator_INCLUDE_DIR}")
-#include_directories(${VulkanMemoryAllocator_INCLUDE_DIR})
-
 target_sources(${PROJECT_NAME}
 PRIVATE 
     ${CMAKE_CURRENT_LIST_DIR}/CommandBuffer.cpp
@@ -24,10 +21,7 @@ PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/Texture.h
     ${CMAKE_CURRENT_LIST_DIR}/Vulkan.h
     ${CMAKE_CURRENT_LIST_DIR}/Window.h
-    #${VulkanMemoryAllocator_INCLUDE_DIR}/vk_mem_alloc.h
 )
-
-message(STATUS "VMA: ${VulkanMemoryAllocator_INCLUDE_DIR}")
 
 target_include_directories(${PROJECT_NAME}
 PUBLIC
@@ -41,7 +35,6 @@ PRIVATE
     EASTL
     EAStdC
     "Vulkan::Vulkan"
-    #VulkanMemoryAllocator
     glfw
     "imgui"
     "Raptor::Core"
