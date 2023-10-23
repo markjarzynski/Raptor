@@ -34,7 +34,7 @@ class GPUDevice
 
 public:
 
-    GPUDevice(Window& window, Allocator& allocator);
+    GPUDevice(Window& window, Allocator& allocator, uint32 flags = 0, uint32 gpu_time_queries_per_frame = 32);
     ~GPUDevice();
 
     GPUDevice(const GPUDevice &) = delete;
@@ -61,7 +61,7 @@ private:
     void DestroyPhysicalDevices();
 
     void SetSurfaceFormat();
-    bool SetPresentMode(VkPresentModeKHR requestedPresentMode = VK_PRESENT_MODE_FIFO_KHR);
+    bool SetPresentMode(VkPresentModeKHR requested_present_mode = VK_PRESENT_MODE_FIFO_KHR);
 
     void CreateSwapChain();
     void DestroySwapChain();
@@ -69,13 +69,13 @@ private:
     void CreateVmaAllocator();
     void DestroyVmaAllocator();
 
-    void CreatePools();
+    void CreatePools(uint32 gpu_time_queries_per_frame);
     void DestroyPools();
 
     void CreateSemaphores();
     void DestroySemaphores();
 
-    void CreateGPUTimestampManager();
+    void CreateGPUTimestampManager(uint32 gpu_time_queries_per_frame);
     void DestroyGPUTimestampManager();
 
     void CreateSampler();
@@ -87,52 +87,54 @@ private:
 
 private:
     
-    VkInstance instance;
-    VkAllocationCallbacks* allocationCallbacks;
-    VkDebugUtilsMessengerEXT debugUtilsMessenger;
-    VkPhysicalDevice physicalDevice;
-    VkPhysicalDeviceProperties physicalDeviceProperties;
-    VkSurfaceKHR surface;
-    VkSurfaceFormatKHR surfaceFormat;
-    VkPresentModeKHR presentMode;
-    uint32 mainQueueFamilyIndex;
-    VkDevice device;
-    VkQueue queue;
-    VkSwapchainKHR swapchain;
-    uint16 swapchainWidth;
-    uint16 swapchainHeight;
-    uint32 swapchainImageCount;
+    VkInstance vk_instance;
+    VkAllocationCallbacks* vk_allocation_callbacks;
+    VkDebugUtilsMessengerEXT vk_debug_utils_messenger;
+    VkPhysicalDevice vk_physical_device;
+    VkPhysicalDeviceProperties vk_physical_device_properties;
+    float gpu_timestamp_frequency;
+    VkSurfaceKHR vk_surface;
+    VkSurfaceFormatKHR vk_surface_format;
+    VkPresentModeKHR vk_present_mode;
+    uint32 main_queue_family_index;
+    VkDevice vk_device;
+    VkQueue vk_queue;
+    VkSwapchainKHR vk_swapchain;
+    uint16 swapchain_width;
+    uint16 swapchain_height;
+    uint32 swapchain_image_count;
     static const uint32 MAX_SWAPCHAIN_IMAGES = 3;
-    VkImage swapchainImages[MAX_SWAPCHAIN_IMAGES];
-    VkImageView swapchainImageViews[MAX_SWAPCHAIN_IMAGES];
-    VkFramebuffer swapchainFramebuffers[MAX_SWAPCHAIN_IMAGES];
-    VmaAllocator vmaAllocator;
-    VkDescriptorPool descriptorPool;
-    VkQueryPool queryPool;
+    VkImage vk_swapchain_images[MAX_SWAPCHAIN_IMAGES];
+    VkImageView vk_swapchain_image_views[MAX_SWAPCHAIN_IMAGES];
+    VkFramebuffer vk_swapchain_framebuffers[MAX_SWAPCHAIN_IMAGES];
+    VmaAllocator vma_allocator;
+    VkDescriptorPool vk_descriptor_pool;
+    VkQueryPool vk_query_pool;
     static const uint32 MAX_FRAMES = 3;
-    VkSemaphore imageAcquiredSemaphore;
-    VkSemaphore renderCompleteSemaphore[MAX_SWAPCHAIN_IMAGES];
-    VkFence commandBufferExecutedFence[MAX_SWAPCHAIN_IMAGES];
+    VkSemaphore vk_image_acquired_semaphore;
+    VkSemaphore vk_render_complete_semaphore[MAX_SWAPCHAIN_IMAGES];
+    VkFence vk_command_buffer_executed_fence[MAX_SWAPCHAIN_IMAGES];
     static const uint32 QUERIES_PER_FRAME = 32;
-    GPUTimestampManager* gpuTimestampManager = nullptr;
+    GPUTimestampManager* gpu_timestamp_manager = nullptr;
 
-    float gpuTimestampFrequency;
+
 
     ResourcePool buffers;
     ResourcePool textures;
     ResourcePool pipelines;
     ResourcePool samplers;
-    ResourcePool descriptorSetLayouts;
-    ResourcePool descriptorSets;
-    ResourcePool renderPasses;
-    ResourcePool commandBuffers;
-    ResourcePool sahders;
+    ResourcePool descriptor_set_layouts;
+    ResourcePool descriptor_sets;
+    ResourcePool render_passes;
+    ResourcePool command_buffers;
+    ResourcePool shaders;
 
-    enum Flags
+    enum Flags : uint32
     {
         DebugUtilsExtensionExist        = 0x1 << 0,
+        EnableGPUTimeQueries            = 0x1 << 1,
     };
-    uint32 uFlags = 0u;
+    uint32 m_uFlags = 0u;
 
 }; // class GPUDevice
 
