@@ -19,7 +19,9 @@ target_link_libraries(${PROJECT_NAME}
 PRIVATE
     EASTL
     EAStdC
+    glfw
     imgui
+    "Vulkan::Vulkan"
     "Raptor::Core"
     "Raptor::Debug"
     "Raptor::Graphics"

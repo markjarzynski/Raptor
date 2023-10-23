@@ -1,13 +1,23 @@
+#include <EAStdC/EASprintf.h>
+#include <EASTL/fixed_vector.h>
+#include <EASTL/algorithm.h>
+
+#if (_MSC_VER)
+#define VK_USE_PLATFORM_WIN32_KHR
+#endif
+
+#define VK_ENABLE_BETA_EXTENSIONS
+#include <vulkan/vulkan.h>
 #define VMA_IMPLEMENTATION
+#include <vk_mem_alloc.h>
+
 #include "Vulkan.h"
-#include "Config.h"
+//#include "Config.h"
 #include "Debug.h"
 //#include "Types.h"
 #include "Defines.h"
 #include "CommandBuffer.h"
-#include <EAStdC/EASprintf.h>
-#include <EASTL/fixed_vector.h>
-#include <EASTL/algorithm.h>
+
 
 namespace Raptor
 {
@@ -78,7 +88,7 @@ void Vulkan::CreateInstance()
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.pApplicationName = window->GetName();
     appInfo.applicationVersion = 1; //VK_MAKE_VERSION(RAPTOR_VERSION_MAJOR, RAPTOR_VERSION_MINOR, RAPTOR_VERSION_PATCH);
-    appInfo.pEngineName = RAPTOR_PROJECT_NAME;
+    appInfo.pEngineName = "";//RAPTOR_PROJECT_NAME;
     appInfo.engineVersion = 1; //VK_MAKE_VERSION(RAPTOR_VERSION_MAJOR, RAPTOR_VERSION_MINOR, RAPTOR_VERSION_PATCH);
     appInfo.apiVersion = VK_API_VERSION_1_3;
 

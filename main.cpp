@@ -1,9 +1,8 @@
-#include "Config.h"
-
 #include <EASTL/version.h>
 #include <EASTL/allocator.h>
 #include <EAStdC/EASprintf.h>
 
+#include "Raptor.h"
 #include "Window.h"
 #include "Vulkan.h"
 #include "DebugUI.h"
@@ -21,7 +20,7 @@ void* __cdecl operator new[](size_t size, size_t alignment, size_t alignmentOffs
 
 void debug_print_versions()
 {
-    EA::StdC::Printf("Raptor version: %s\n", RAPTOR_VERSION);
+    EA::StdC::Printf("%s version: %s\n", RAPTOR_PROJECT_NAME, RAPTOR_VERSION);
     EA::StdC::Printf("EASTL version: %s\n", EASTL_VERSION);
     EA::StdC::Printf("GLFW version: %s\n", glfwGetVersionString());
     EA::StdC::Printf("Dear ImGui version: %s\n", ImGui::GetVersion());

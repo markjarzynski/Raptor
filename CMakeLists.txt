@@ -8,12 +8,18 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQURIED True)
 
 # set configure file
-configure_file(Config.h.in Config.h)
+configure_file(Raptor.h.in Raptor.h @ONLY)
+
+message(STATUS "Test: ${PROJECT_SOURCE_DIR}")
 
 # cmake module path
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/CMake")
 
 find_package(Vulkan REQUIRED)
+message(STATUS "Vulkan: ${Vulkan_LIBRARIES} ${Vulkan_INCLUDE_DIRS}")
+
+find_package(VulkanMemoryAllocator REQUIRED)
+message(STATUS "VulkanMemoryAllocator: ${VulkanMemoryAllocator_INCLUDE_DIR}")
 
 #include(GLFW)
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
@@ -24,39 +30,37 @@ find_package(GLFW REQUIRED)
 include(EASTL)
 include(ImGui)
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/Common/External/VulkanMemoryAllocator)
-
-#find_package(IMGUI REQUIRED)
-
 add_executable(${PROJECT_NAME}
     main.cpp
-    Graphics/Window.h Graphics/Window.cpp
-    Graphics/Vulkan.h Graphics/Vulkan.cpp
-    Debug/Log.h Debug/Log.cpp
-    Debug/UI/DebugUI.h Debug/UI/DebugUI.cpp
 )
 
-include_directories(${PROJECT_NAME}
-    ${CMAKE_CURRENT_BINARY_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/Graphics
-    ${CMAKE_CURRENT_SOURCE_DIR}/Debug
-    ${CMAKE_CURRENT_SOURCE_DIR}/Debug/UI
-)
+# include_directories(${PROJECT_NAME}
+# PUBLIC
+#     ${CMAKE_CURRENT_BINARY_DIR}
+#     ${CMAKE_CURRENT_SOURCE_DIR}/Graphics
+#     ${CMAKE_CURRENT_SOURCE_DIR}/Debug
+#     ${CMAKE_CURRENT_SOURCE_DIR}/Debug/UI
+# )
 
 add_subdirectory(Core)
 add_subdirectory(Debug)
 add_subdirectory(Graphics)
 add_subdirectory(Debug/UI)
 
+target_include_directories(${PROJECT_NAME}
+PUBLIC
+    ${VulkanMemoryAllocator_INCLUDE_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}
+)
+
 target_link_libraries(${PROJECT_NAME}
 PRIVATE
     EASTL
-    EAAssert
-    EAThread
     EAStdC
+    "Vulkan::Vulkan"
+    #VulkanMemoryAllocator
     glfw
     imgui
-    "Vulkan::Vulkan"
     "Raptor::Core"
     "Raptor::Debug"
     "Raptor::Graphics"

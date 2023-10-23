@@ -1,4 +1,5 @@
 #pragma once
+#include <vk_mem_alloc.h>
 #include "Resources.h"
 
 namespace Raptor

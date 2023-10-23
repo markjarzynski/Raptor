@@ -3,9 +3,11 @@
 #if (_MSC_VER)
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
+
 #define VK_ENABLE_BETA_EXTENSIONS
 #include <vulkan/vulkan.h>
-#include <VMA/vk_mem_alloc.h>
+#include <vk_mem_alloc.h>
+
 #include <EASTL/allocator.h>
 
 #include "Window.h"
