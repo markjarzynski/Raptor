@@ -29,6 +29,9 @@ namespace Raptor
 {
 namespace Graphics
 {
+
+class CommandBuffer;
+
 class GPUDevice
 {
     using Allocator = eastl::allocator;
@@ -79,6 +82,10 @@ private:
     void CreateGPUTimestampManager(uint32 gpu_time_queries_per_frame);
     void DestroyGPUTimestampManager();
 
+    void CreateCommandBuffers();
+    void DestroyCommandBuffers();
+
+
     void CreateSampler();
     void CreateBuffer();
     void CreateTexture();
@@ -116,6 +123,8 @@ public:
     VkFence vk_command_buffer_executed_fence[MAX_SWAPCHAIN_IMAGES];
     static const uint32 QUERIES_PER_FRAME = 32;
     GPUTimestampManager* gpu_timestamp_manager = nullptr;
+    //CommandBufferRing command_buffer_ring;
+    CommandBuffer** queued_command_buffers = nullptr;
 
     ResourcePool buffers;
     ResourcePool textures;

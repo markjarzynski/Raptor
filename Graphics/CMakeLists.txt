@@ -15,8 +15,8 @@ PRIVATE
 PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/CommandBuffer.h
     ${CMAKE_CURRENT_LIST_DIR}/CommandBufferRing.h
-    ${CMAKE_CURRENT_LIST_DIR}/GPUTimestampManager.h
     ${CMAKE_CURRENT_LIST_DIR}/GPUDevice.h
+    ${CMAKE_CURRENT_LIST_DIR}/GPUTimestampManager.h
     ${CMAKE_CURRENT_LIST_DIR}/RenderPass.h
     ${CMAKE_CURRENT_LIST_DIR}/ResourcePool.h
     ${CMAKE_CURRENT_LIST_DIR}/Resources.h

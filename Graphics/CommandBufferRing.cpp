@@ -6,8 +6,8 @@ namespace Raptor
 namespace Graphics
 {
 
-CommandBufferRing::CommandBufferRing(GPUDevice* gpu_device)
-    : gpu_device(gpu_device)
+CommandBufferRing::CommandBufferRing(GPUDevice* gpuDevice)
+    : gpu_device(gpuDevice)
 {
     VkResult result;
 

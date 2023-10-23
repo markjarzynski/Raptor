@@ -9,11 +9,9 @@ namespace Raptor
 {
 namespace Graphics
 {
-
 class CommandBuffer
 {
 public:
-
     enum Flags : uint32
     {
         None        = 0x0,
@@ -26,7 +24,7 @@ public:
         Graphics, Compute, CopyTransfer, Max
     };
     
-    CommandBuffer(){}
+    CommandBuffer() {}
     CommandBuffer(QueueType type, uint32 bufferSize, uint32 submitSize, Flags m_uFlags = Flags::None);
     ~CommandBuffer();
 
@@ -40,8 +38,6 @@ public:
     void PopMarker();
 
     void reset();
-
-public:
 
     VkCommandBuffer vk_command_buffer;
 
@@ -58,10 +54,10 @@ public:
 
     uint32 handle;
 
-    uint32 currentCommand;
+    uint32 current_command;
     //ResourceHandle resourceHandle;
-    QueueType type = QueueType::Graphics;
-    uint32 bufferSize = 0;
+    QueueType queue_type = QueueType::Graphics;
+    uint32 buffer_size = 0;
     
 }; // class CommandBuffer
 } // namespace Graphics

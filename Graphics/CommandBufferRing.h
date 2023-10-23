@@ -1,7 +1,9 @@
 #pragma once
 
-#include "GPUDevice.h"
+#include <vulkan/vulkan.h>
+
 #include "CommandBuffer.h"
+#include "GPUDevice.h"
 #include "Resources.h"
 #include "Types.h"
 
@@ -11,7 +13,9 @@ namespace Graphics
 {
 class CommandBufferRing
 {
+
 public:
+    CommandBufferRing(){}
     CommandBufferRing(GPUDevice* gpu_device);
     ~CommandBufferRing();
 
@@ -21,8 +25,6 @@ public:
     CommandBuffer* GetCommandBufferInstant(uint32 frame, bool begin);
 
     static uint32 PoolFromIndex(uint32 index) { return index / BUFFER_PER_POOL; }
-
-private:
 
     static const uint32 MAX_THREADS = 1;
     static const uint32 MAX_POOLS = MAX_SWAPCHAIN_IMAGES * MAX_THREADS;

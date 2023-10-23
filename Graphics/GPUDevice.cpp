@@ -47,6 +47,8 @@ PFN_vkSetDebugUtilsObjectNameEXT pfnSetDebugUtilsObjectNameEXT;
 PFN_vkCmdBeginDebugUtilsLabelEXT pfnCmdBeginDebugUtilsLabelEXT;
 PFN_vkCmdEndDebugUtilsLabelEXT pfnCmdEndDebugUtilsLabelEXT;
 
+static CommandBufferRing command_buffer_ring {};
+
 GPUDevice::GPUDevice(Window& window, Allocator& allocator, uint32 flags, uint32 gpu_time_queries_per_frame)
     : window(&window), allocator(&allocator), m_uFlags(flags)
 {
@@ -61,10 +63,12 @@ GPUDevice::GPUDevice(Window& window, Allocator& allocator, uint32 flags, uint32 
     CreatePools(gpu_time_queries_per_frame);
     CreateSemaphores();
     CreateGPUTimestampManager(gpu_time_queries_per_frame);
+    CreateCommandBuffers();
 }
 
 GPUDevice::~GPUDevice()
 {
+    DestroyCommandBuffers();
     DestroyGPUTimestampManager();
     DestroySemaphores();
     DestroyPools();
@@ -533,16 +537,27 @@ void GPUDevice::DestroySemaphores()
 //------------------------------------------------------------------------------
 void GPUDevice::CreateGPUTimestampManager(uint32 gpu_time_queries_per_frame)
 {
-    uint8* memory = (uint8*)allocator->allocate(sizeof(GPUTimestampManager) + sizeof(CommandBuffer*) * 128);
+    uint8* memory = (uint8*)allocator->allocate(sizeof(GPUTimestampManager) );//+ sizeof(CommandBuffer*) * 128);
     gpu_timestamp_manager = new (memory)GPUTimestampManager(allocator, gpu_time_queries_per_frame, MAX_FRAMES);
-
-
 }
 
 //------------------------------------------------------------------------------
 void GPUDevice::DestroyGPUTimestampManager()
 {
+    allocator->deallocate(gpu_timestamp_manager, sizeof(GPUTimestampManager));
+}
 
+void GPUDevice::CreateCommandBuffers()
+{
+    command_buffer_ring = CommandBufferRing(this);
+
+    uint8* memory = (uint8*)allocator->allocate(sizeof(CommandBuffer*) * 128);
+    queued_command_buffers = (CommandBuffer**)(memory);
+}
+
+void GPUDevice::DestroyCommandBuffers()
+{
+    allocator->deallocate(queued_command_buffers, sizeof(CommandBuffer*) * 128);
 }
 
 //------------------------------------------------------------------------------

@@ -6,7 +6,7 @@ namespace Graphics
 {
 
 CommandBuffer::CommandBuffer(QueueType type, uint32 bufferSize, uint32 submitSize, Flags flags)
-    : type(type), bufferSize(bufferSize), m_uFlags(flags)
+    : queue_type(type), buffer_size(bufferSize), m_uFlags(flags)
 {
     reset();
 }
