@@ -9,6 +9,7 @@ target_sources(${PROJECT_NAME}
 PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/Constants.h
     ${CMAKE_CURRENT_LIST_DIR}/Defines.h
+    ${CMAKE_CURRENT_LIST_DIR}/Service.h
     ${CMAKE_CURRENT_LIST_DIR}/Types.h
 )
 

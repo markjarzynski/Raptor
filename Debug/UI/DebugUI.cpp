@@ -9,8 +9,8 @@ namespace Debug
 namespace UI
 {
 
-DebugUI::DebugUI(Raptor::Graphics::Window& window, Raptor::Graphics::Vulkan& vulkan)
-    : window(&window), vulkan(&vulkan)
+DebugUI::DebugUI(Raptor::Graphics::Window& window, Raptor::Graphics::GPUDevice& gpu_device)
+    : window(&window), gpu_device(&gpu_device)
 {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();

@@ -5,7 +5,7 @@
 #include "imgui_impl_vulkan.h"
 
 #include "Window.h"
-#include "Vulkan.h"
+#include "GpuDevice.h"
 
 namespace Raptor
 {
@@ -17,14 +17,14 @@ class DebugUI
 {
 public:
 
-    DebugUI(Raptor::Graphics::Window& window, Raptor::Graphics::Vulkan& vulkan);
+    DebugUI(Raptor::Graphics::Window& window, Raptor::Graphics::GPUDevice& gpu_device);
     ~DebugUI();
 
     DebugUI(const DebugUI &) = delete;
     DebugUI &operator=(const DebugUI &) = delete;
 
     Raptor::Graphics::Window* window;
-    Raptor::Graphics::Vulkan* vulkan;
+    Raptor::Graphics::GPUDevice* gpu_device;
 
     void Update();
     void Render();

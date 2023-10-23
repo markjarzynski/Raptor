@@ -1,7 +1,3 @@
-#include <EAStdC/EASprintf.h>
-#include <EASTL/fixed_vector.h>
-#include <EASTL/algorithm.h>
-
 #if (_MSC_VER)
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
@@ -11,13 +7,14 @@
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
-#include "Vulkan.h"
-//#include "Config.h"
-#include "Debug.h"
-//#include "Types.h"
+#include <EAStdC/EASprintf.h>
+#include <EASTL/fixed_vector.h>
+#include <EASTL/algorithm.h>
+
+#include "GPUDevice.h"
+#include "Raptor.h"
 #include "Defines.h"
 #include "CommandBuffer.h"
-
 
 namespace Raptor
 {
@@ -49,7 +46,7 @@ PFN_vkSetDebugUtilsObjectNameEXT pfnSetDebugUtilsObjectNameEXT;
 PFN_vkCmdBeginDebugUtilsLabelEXT pfnCmdBeginDebugUtilsLabelEXT;
 PFN_vkCmdEndDebugUtilsLabelEXT pfnCmdEndDebugUtilsLabelEXT;
 
-Vulkan::Vulkan(Window& window, Allocator& allocator)
+GPUDevice::GPUDevice(Window& window, Allocator& allocator)
     : window(&window), allocator(&allocator)
 {
     CreateInstance();
@@ -65,7 +62,7 @@ Vulkan::Vulkan(Window& window, Allocator& allocator)
     CreateGPUTimestampManager();
 }
 
-Vulkan::~Vulkan()
+GPUDevice::~GPUDevice()
 {
     DestroyGPUTimestampManager();
     DestroySemaphores();
@@ -79,7 +76,7 @@ Vulkan::~Vulkan()
 }
 
 //------------------------------------------------------------------------------
-void Vulkan::CreateInstance()
+void GPUDevice::CreateInstance()
 {
     VkResult result;
     allocationCallbacks = nullptr;
@@ -105,13 +102,13 @@ void Vulkan::CreateInstance()
 }
 
 //------------------------------------------------------------------------------
-void Vulkan::DestroyInstance()
+void GPUDevice::DestroyInstance()
 {
     vkDestroyInstance(instance, allocationCallbacks);
 }
 
 //------------------------------------------------------------------------------
-void Vulkan::CreateDebugUtilsMessenger()
+void GPUDevice::CreateDebugUtilsMessenger()
 {
 #ifdef VULKAN_DEBUG
     VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
@@ -151,7 +148,7 @@ void Vulkan::CreateDebugUtilsMessenger()
 }
 
 //------------------------------------------------------------------------------
-void Vulkan::DestroyDebugUtilsMessenger()
+void GPUDevice::DestroyDebugUtilsMessenger()
 {
 #ifdef VULKAN_DEBUG
     if (uFlags & Flags::DebugUtilsExtensionExist)
@@ -175,19 +172,19 @@ static VkBool32 DebugUtilsCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severi
 #endif
 
 //------------------------------------------------------------------------------
-void Vulkan::CreateSurface()
+void GPUDevice::CreateSurface()
 {
     VkResult result = glfwCreateWindowSurface(instance, window->GetGLFWwindow(), allocationCallbacks, &surface);
     ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to create window surface.");
 }
 
-void Vulkan::DestroySurface()
+void GPUDevice::DestroySurface()
 {
     vkDestroySurfaceKHR(instance, surface, allocationCallbacks);
 }
 
 //------------------------------------------------------------------------------
-void Vulkan::CreatePhysicalDevices()
+void GPUDevice::CreatePhysicalDevices()
 {
     VkResult result;
     uint32 numPhysicalDevices;
@@ -278,12 +275,12 @@ void Vulkan::CreatePhysicalDevices()
 }
 
 //------------------------------------------------------------------------------
-void Vulkan::DestroyPhysicalDevices()
+void GPUDevice::DestroyPhysicalDevices()
 {
     vkDestroyDevice(device, allocationCallbacks);
 }
 
-void Vulkan::SetSurfaceFormat()
+void GPUDevice::SetSurfaceFormat()
 {
     const VkFormat surfaceImageFormats[] = {VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_B8G8R8_UNORM, VK_FORMAT_R8G8B8_UNORM};
     const VkColorSpaceKHR surfaceColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
@@ -312,7 +309,7 @@ void Vulkan::SetSurfaceFormat()
     surfaceFormat = surfaceSupportedFormats[0];
 }
 
-bool Vulkan::SetPresentMode(VkPresentModeKHR requestedPresentMode)
+bool GPUDevice::SetPresentMode(VkPresentModeKHR requestedPresentMode)
 {
     uint32 surfacePresentModesCount;
     vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &surfacePresentModesCount, NULL);
@@ -336,7 +333,7 @@ bool Vulkan::SetPresentMode(VkPresentModeKHR requestedPresentMode)
 }
 
 //------------------------------------------------------------------------------
-void Vulkan::CreateSwapChain()
+void GPUDevice::CreateSwapChain()
 {
     VkResult result;
     VkBool32 surfaceSupported;
@@ -403,7 +400,7 @@ void Vulkan::CreateSwapChain()
 }
 
 //------------------------------------------------------------------------------
-void Vulkan::DestroySwapChain()
+void GPUDevice::DestroySwapChain()
 {
     for (uint32 iImage = 0; iImage < swapchainImageCount; iImage++)
     {
@@ -414,7 +411,7 @@ void Vulkan::DestroySwapChain()
 }
 
 //------------------------------------------------------------------------------
-void Vulkan::CreateVmaAllocator()
+void GPUDevice::CreateVmaAllocator()
 {
     VmaAllocatorCreateInfo allocatorInfo = {};
     allocatorInfo.physicalDevice = physicalDevice;
@@ -426,13 +423,13 @@ void Vulkan::CreateVmaAllocator()
 }
 
 //------------------------------------------------------------------------------
-void Vulkan::DestroyVmaAllocator()
+void GPUDevice::DestroyVmaAllocator()
 {
     vmaDestroyAllocator(vmaAllocator);
 }
 
 //------------------------------------------------------------------------------
-void Vulkan::CreatePools()
+void GPUDevice::CreatePools()
 {
     VkResult result;
 
@@ -486,7 +483,7 @@ void Vulkan::CreatePools()
 }
 
 //------------------------------------------------------------------------------
-void Vulkan::DestroyPools()
+void GPUDevice::DestroyPools()
 {
     samplers.shutdown();
     renderPasses.shutdown();
@@ -498,7 +495,7 @@ void Vulkan::DestroyPools()
 }
 
 //------------------------------------------------------------------------------
-void Vulkan::CreateSemaphores()
+void GPUDevice::CreateSemaphores()
 {
     VkResult result;
 
@@ -525,7 +522,7 @@ void Vulkan::CreateSemaphores()
 }
 
 //------------------------------------------------------------------------------
-void Vulkan::DestroySemaphores()
+void GPUDevice::DestroySemaphores()
 {
     for (uint32 i = 0; i < MAX_SWAPCHAIN_IMAGES; i++)
     {
@@ -537,7 +534,7 @@ void Vulkan::DestroySemaphores()
 }
 
 //------------------------------------------------------------------------------
-void Vulkan::CreateGPUTimestampManager()
+void GPUDevice::CreateGPUTimestampManager()
 {
     uint8* memory = (uint8*)allocator->allocate(sizeof(GPUTimestampManager) + sizeof(CommandBuffer*) * 128);
     //gpuTimestampManager = (GPUTimestampManager*)memory;
@@ -545,23 +542,23 @@ void Vulkan::CreateGPUTimestampManager()
 }
 
 //------------------------------------------------------------------------------
-void Vulkan::DestroyGPUTimestampManager()
+void GPUDevice::DestroyGPUTimestampManager()
 {
 
 }
 
 //------------------------------------------------------------------------------
-void Vulkan::CreateSampler(){}
+void GPUDevice::CreateSampler(){}
 //------------------------------------------------------------------------------
-void Vulkan::CreateBuffer(){}
+void GPUDevice::CreateBuffer(){}
 //------------------------------------------------------------------------------
-void Vulkan::CreateTexture(){}
+void GPUDevice::CreateTexture(){}
 //------------------------------------------------------------------------------
-void Vulkan::CreateRenderPass(){}
+void GPUDevice::CreateRenderPass(){}
 
 
 //------------------------------------------------------------------------------
-VkBool32 Vulkan::GetFamilyQueue(VkPhysicalDevice pDevice)
+VkBool32 GPUDevice::GetFamilyQueue(VkPhysicalDevice pDevice)
 {
     uint32 familyQueueCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(pDevice, &familyQueueCount, nullptr);

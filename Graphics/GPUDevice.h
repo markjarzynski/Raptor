@@ -10,6 +10,7 @@
 
 #include <EASTL/allocator.h>
 
+#include "Service.h"
 #include "Window.h"
 #include "Debug.h"
 #include "Log.h"
@@ -27,18 +28,17 @@ namespace Raptor
 {
 namespace Graphics
 {
-
-class Vulkan
+class GPUDevice
 {
     using Allocator = eastl::allocator;
 
 public:
 
-    Vulkan(Window& window, Allocator& allocator);
-    ~Vulkan();
+    GPUDevice(Window& window, Allocator& allocator);
+    ~GPUDevice();
 
-    Vulkan(const Vulkan &) = delete;
-    Vulkan &operator=(const Vulkan &) = delete;
+    GPUDevice(const GPUDevice &) = delete;
+    GPUDevice &operator=(const GPUDevice &) = delete;
 
     Window* window;
     Allocator* allocator;
@@ -134,7 +134,7 @@ private:
     };
     uint32 uFlags = 0u;
 
-}; // class Vulkan
+}; // class GPUDevice
 
 static bool check_result(VkResult result);
 

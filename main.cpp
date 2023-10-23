@@ -4,7 +4,7 @@
 
 #include "Raptor.h"
 #include "Window.h"
-#include "Vulkan.h"
+#include "GPUDevice.h"
 #include "DebugUI.h"
 
 // These new operators are required by EASTL
@@ -38,7 +38,7 @@ int main( int argc, char** argv)
     Allocator allocator {};
 
     Raptor::Graphics::Window window {1920, 1080, "Raptor"};
-    Raptor::Graphics::Vulkan vulkan {window, allocator};
+    Raptor::Graphics::GPUDevice gpu_device {window, allocator};
     //Raptor::Debug::UI::DebugUI debugUI {window, vulkan};
 
     while (!window.ShouldClose())
