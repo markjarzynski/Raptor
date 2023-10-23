@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.h>
 #include "Types.h"
 #include "Resources.h"
+#include "GPUDevice.h"
 
 namespace Raptor
 {
@@ -25,7 +26,8 @@ public:
         Graphics, Compute, CopyTransfer, Max
     };
     
-    CommandBuffer(QueueType type, uint32 bufferSize, uint32 submitSize, Flags flags = Flags::None);
+    CommandBuffer(){}
+    CommandBuffer(QueueType type, uint32 bufferSize, uint32 submitSize, Flags m_uFlags = Flags::None);
     ~CommandBuffer();
 
     void CommandBuffer::bindPass(RenderPassHandle handle);
@@ -39,20 +41,20 @@ public:
 
     void reset();
 
-private:
+public:
 
-    VkCommandBuffer commandBuffer;
+    VkCommandBuffer vk_command_buffer;
 
-    //GpuDevice* device;
+    GPUDevice* gpu_device;
 
-    VkDescriptorSet descriptorSets[16];
+    VkDescriptorSet vk_descriptor_sets[16];
 
     //RenderPass* currentRenderPass;
     //Pipeline* currentPipeline;
 
-    VkClearValue clears[2]; // 0 color, 1 depth
+    VkClearValue vk_clears[2]; // 0 color, 1 depth
 
-    uint32 uFlags = Flags::None;
+    uint32 m_uFlags = Flags::None;
 
     uint32 handle;
 

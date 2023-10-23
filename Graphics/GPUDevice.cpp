@@ -15,6 +15,7 @@
 #include "Raptor.h"
 #include "Defines.h"
 #include "CommandBuffer.h"
+#include "CommandBufferRing.h"
 
 namespace Raptor
 {
@@ -515,8 +516,6 @@ void GPUDevice::CreateSemaphores()
         result = vkCreateFence(vk_device, &fenceInfo, vk_allocation_callbacks, &vk_command_buffer_executed_fence[i]);
         ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to create fence %d.", i);
     }
-
-
 }
 
 //------------------------------------------------------------------------------
@@ -535,8 +534,9 @@ void GPUDevice::DestroySemaphores()
 void GPUDevice::CreateGPUTimestampManager(uint32 gpu_time_queries_per_frame)
 {
     uint8* memory = (uint8*)allocator->allocate(sizeof(GPUTimestampManager) + sizeof(CommandBuffer*) * 128);
-    //gpuTimestampManager = (GPUTimestampManager*)memory;
     gpu_timestamp_manager = new (memory)GPUTimestampManager(allocator, gpu_time_queries_per_frame, MAX_FRAMES);
+
+
 }
 
 //------------------------------------------------------------------------------

@@ -38,6 +38,8 @@ static const uint8 MAX_VERTEX_ATTRIBUTES = 16;
 static const uint32 SUBMIT_HEADER_SENTINEL = 0xfefeb7ba;
 static const uint32 MAX_RESOURCE_DELETIONS = 64;
 
+static const uint32 MAX_SWAPCHAIN_IMAGES = 3;
+
 enum ResourceUsageType
 {
     Immutable, Dynamic, Stream, Max

@@ -21,6 +21,7 @@
 #include "Sampler.h"
 #include "RenderPass.h"
 #include "ResourcePool.h"
+#include "Resources.h"
 
 #define VULKAN_DEBUG
 
@@ -84,9 +85,9 @@ private:
     void CreateRenderPass();
 
     VkBool32 GetFamilyQueue(VkPhysicalDevice pDevice);
-
-private:
     
+public:
+
     VkInstance vk_instance;
     VkAllocationCallbacks* vk_allocation_callbacks;
     VkDebugUtilsMessengerEXT vk_debug_utils_messenger;
@@ -103,7 +104,6 @@ private:
     uint16 swapchain_width;
     uint16 swapchain_height;
     uint32 swapchain_image_count;
-    static const uint32 MAX_SWAPCHAIN_IMAGES = 3;
     VkImage vk_swapchain_images[MAX_SWAPCHAIN_IMAGES];
     VkImageView vk_swapchain_image_views[MAX_SWAPCHAIN_IMAGES];
     VkFramebuffer vk_swapchain_framebuffers[MAX_SWAPCHAIN_IMAGES];
@@ -116,8 +116,6 @@ private:
     VkFence vk_command_buffer_executed_fence[MAX_SWAPCHAIN_IMAGES];
     static const uint32 QUERIES_PER_FRAME = 32;
     GPUTimestampManager* gpu_timestamp_manager = nullptr;
-
-
 
     ResourcePool buffers;
     ResourcePool textures;

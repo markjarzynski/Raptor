@@ -6,6 +6,7 @@ add_library("Raptor::${PROJECT_NAME}" ALIAS ${PROJECT_NAME})
 target_sources(${PROJECT_NAME}
 PRIVATE 
     ${CMAKE_CURRENT_LIST_DIR}/CommandBuffer.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/CommandBufferRing.cpp
     ${CMAKE_CURRENT_LIST_DIR}/GPUDevice.cpp
     ${CMAKE_CURRENT_LIST_DIR}/GPUTimestampManager.cpp
     ${CMAKE_CURRENT_LIST_DIR}/RenderPass.cpp
@@ -13,6 +14,7 @@ PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/Window.cpp
 PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/CommandBuffer.h
+    ${CMAKE_CURRENT_LIST_DIR}/CommandBufferRing.h
     ${CMAKE_CURRENT_LIST_DIR}/GPUTimestampManager.h
     ${CMAKE_CURRENT_LIST_DIR}/GPUDevice.h
     ${CMAKE_CURRENT_LIST_DIR}/RenderPass.h

@@ -6,19 +6,19 @@ namespace Graphics
 {
 
 CommandBuffer::CommandBuffer(QueueType type, uint32 bufferSize, uint32 submitSize, Flags flags)
-    : type(type), bufferSize(bufferSize), uFlags(flags)
+    : type(type), bufferSize(bufferSize), m_uFlags(flags)
 {
     reset();
 }
 
 CommandBuffer::~CommandBuffer()
 {
-    uFlags &= ~Flags::isRecording;
+    m_uFlags &= ~Flags::isRecording;
 }
 
 void CommandBuffer::bindPass(RenderPassHandle handle)
 {
-    uFlags |= Flags::isRecording;
+    m_uFlags |= Flags::isRecording;
 
     //RenderPass* renderPass = device->access
 
