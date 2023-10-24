@@ -24,7 +24,7 @@ public:
         Graphics, Compute, CopyTransfer, Max
     };
     
-    CommandBuffer() {}
+    CommandBuffer(){}
     CommandBuffer(QueueType type, uint32 bufferSize, uint32 submitSize, Flags m_uFlags = Flags::None);
     ~CommandBuffer();
 

@@ -14,6 +14,10 @@
 #include "GPUDevice.h"
 #include "Raptor.h"
 #include "Defines.h"
+#include "DescriptorSet.h"
+#include "DescriptorSetLayout.h"
+#include "ShaderState.h"
+#include "Pipeline.h"
 #include "CommandBuffer.h"
 #include "CommandBufferRing.h"
 
@@ -47,7 +51,7 @@ PFN_vkSetDebugUtilsObjectNameEXT pfnSetDebugUtilsObjectNameEXT;
 PFN_vkCmdBeginDebugUtilsLabelEXT pfnCmdBeginDebugUtilsLabelEXT;
 PFN_vkCmdEndDebugUtilsLabelEXT pfnCmdEndDebugUtilsLabelEXT;
 
-static CommandBufferRing command_buffer_ring {};
+static CommandBufferRing* command_buffer_ring;
 
 GPUDevice::GPUDevice(Window& window, Allocator& allocator, uint32 flags, uint32 gpu_time_queries_per_frame)
     : window(&window), allocator(&allocator), m_uFlags(flags)
@@ -477,18 +481,21 @@ void GPUDevice::CreatePools(uint32 gpu_time_queries_per_frame)
     buffers.init(allocator, 4096, sizeof(Buffer));
     textures.init(allocator, 512, sizeof(Texture));
     render_passes.init(allocator, 256, sizeof(RenderPass));
-    //descriptorSetLayouts.init(allocator, 128, sizeof(DescriptorSetLayout));
-    //pipelines.init(allocator, 128, sizeof(Pipeline));
-    //shaders.init(allocator, 128, sizeof(ShaderState));
-    //descriptorSets.init(allocator, 256, sizeof(DescriptorSet));
+    descriptor_set_layouts.init(allocator, 128, sizeof(DescriptorSetLayout));
+    pipelines.init(allocator, 128, sizeof(Pipeline));
+    shaders.init(allocator, 128, sizeof(ShaderState));
+    descriptor_sets.init(allocator, 256, sizeof(DescriptorSet));
     samplers.init(allocator, 32, sizeof(Sampler));
-
 }
 
 //------------------------------------------------------------------------------
 void GPUDevice::DestroyPools()
 {
     samplers.shutdown();
+    descriptor_sets.shutdown();
+    shaders.shutdown();
+    pipelines.shutdown();
+    descriptor_set_layouts.shutdown();
     render_passes.shutdown();
     textures.shutdown();
     buffers.shutdown();
@@ -549,14 +556,16 @@ void GPUDevice::DestroyGPUTimestampManager()
 
 void GPUDevice::CreateCommandBuffers()
 {
-    command_buffer_ring = CommandBufferRing(this);
+    uint8* memory = (uint8*)allocator->allocate(sizeof(CommandBufferRing) + sizeof(CommandBuffer*) * 128);
+    command_buffer_ring = new (memory)CommandBufferRing(this);
 
-    uint8* memory = (uint8*)allocator->allocate(sizeof(CommandBuffer*) * 128);
-    queued_command_buffers = (CommandBuffer**)(memory);
+    //uint8* memory = (uint8*)allocator->allocate(sizeof(CommandBuffer*) * 128);
+    queued_command_buffers = (CommandBuffer**)(memory + sizeof(CommandBufferRing));
 }
 
 void GPUDevice::DestroyCommandBuffers()
 {
+    allocator->deallocate(command_buffer_ring, sizeof(CommandBufferRing));
     allocator->deallocate(queued_command_buffers, sizeof(CommandBuffer*) * 128);
 }
 

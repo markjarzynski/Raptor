@@ -15,7 +15,6 @@ class CommandBufferRing
 {
 
 public:
-    CommandBufferRing(){}
     CommandBufferRing(GPUDevice* gpu_device);
     ~CommandBufferRing();
 

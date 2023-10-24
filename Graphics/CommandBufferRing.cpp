@@ -13,8 +13,9 @@ CommandBufferRing::CommandBufferRing(GPUDevice* gpuDevice)
 
     for (uint32 i = 0; i < MAX_POOLS; i++)
     {
-        VkCommandPoolCreateInfo pool_create_info;
+        VkCommandPoolCreateInfo pool_create_info {};
         pool_create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        //pool_create_info.pNext = nullptr;
         pool_create_info.queueFamilyIndex = gpu_device->main_queue_family_index;
         pool_create_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
@@ -24,7 +25,7 @@ CommandBufferRing::CommandBufferRing(GPUDevice* gpuDevice)
 
     for (uint32 i = 0; i < MAX_BUFFERS; i++)
     {
-        VkCommandBufferAllocateInfo alloc_info;
+        VkCommandBufferAllocateInfo alloc_info {};
         alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         const uint32 pool_index = PoolFromIndex(i);
         alloc_info.commandPool = vk_command_pools[pool_index];
