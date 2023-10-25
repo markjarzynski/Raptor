@@ -40,12 +40,28 @@ static const uint32 MAX_RESOURCE_DELETIONS = 64;
 
 static const uint32 MAX_SWAPCHAIN_IMAGES = 3;
 
-enum ResourceUsageType
+enum class ResourceUsageType
 {
     Immutable, Dynamic, Stream, Max
 };
 
+enum class ResourceDeletionType
+{
+    Buffer, Texture, Pipeline, Sampler, DescriptorSetLayout, DescriptorSet, RenderPass, ShaderState, Max
+};
 
+struct ResourceUpdate
+{
+    ResourceDeletionType type;
+    ResourceHandle handle;
+    uint32 current_frame;
+}; // struct ResourceUpdate
+
+struct DescriptorSetUpdate
+{
+    DescriptorSetHandle handle;
+    uint32 frame_issued = 0;
+}; // struct DescriptorSetUpdate
 
 } // namespace Graphics
 } // namespace Raptor

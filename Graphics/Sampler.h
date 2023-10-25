@@ -8,15 +8,15 @@ namespace Graphics
 {
 struct Sampler
 {
-    VkSampler sampler;
+    VkSampler vk_sampler;
 
-    VkFilter minFilter = VK_FILTER_NEAREST;
-    VkFilter magFilter = VK_FILTER_NEAREST;
-    VkSamplerMipmapMode mipFilter = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    VkFilter min_filter = VK_FILTER_NEAREST;
+    VkFilter mag_filter = VK_FILTER_NEAREST;
+    VkSamplerMipmapMode mip_filter = VK_SAMPLER_MIPMAP_MODE_NEAREST;
 
-    VkSamplerAddressMode addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    VkSamplerAddressMode addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    VkSamplerAddressMode addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    VkSamplerAddressMode address_mode_u = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    VkSamplerAddressMode address_mode_v = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    VkSamplerAddressMode address_mode_w = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 
     const char* name = nullptr;
 }; // struct Sampler

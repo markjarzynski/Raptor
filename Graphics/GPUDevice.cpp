@@ -53,6 +53,7 @@ PFN_vkCmdEndDebugUtilsLabelEXT pfnCmdEndDebugUtilsLabelEXT;
 
 static CommandBufferRing* command_buffer_ring;
 
+//------------------------------------------------------------------------------
 GPUDevice::GPUDevice(Window& window, Allocator& allocator, uint32 flags, uint32 gpu_time_queries_per_frame)
     : window(&window), allocator(&allocator), m_uFlags(flags)
 {
@@ -68,8 +69,23 @@ GPUDevice::GPUDevice(Window& window, Allocator& allocator, uint32 flags, uint32 
     CreateSemaphores();
     CreateGPUTimestampManager(gpu_time_queries_per_frame);
     CreateCommandBuffers();
+
+    image_index = 0;
+    current_frame = 1;
+    previous_frame = 0;
+    absolute_frame = 0;
+    //m_uFlags &= ~Flags::TimestampsEnabled;
+
+    resource_deleting_queue.set_allocator(allocator);
+    descriptor_set_updates.set_allocator(allocator);
+
+    default_sampler = CreateSampler("Sampler Default", VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+    fullscreen_vertex_buffer = CreateBuffer("Fullscreen Vertex Buffer", ResourceUsageType::Immutable, 0, nullptr, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    depth_texture = CreateTexture("Depth Texture", nullptr, VK_FORMAT_D32_SFLOAT, Texture::Type::Texture2D, window.width, window.height, 1, 1, 0);
+
 }
 
+//------------------------------------------------------------------------------
 GPUDevice::~GPUDevice()
 {
     DestroyCommandBuffers();
@@ -136,7 +152,7 @@ void GPUDevice::CreateDebugUtilsMessenger()
     {
         if (strcmp(ext.extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0)
         {
-            m_uFlags |= DebugUtilsExtensionExist;
+            m_uFlags |= Flags::DebugUtilsExtensionExist;
             break;
         }
     }
@@ -169,6 +185,7 @@ void GPUDevice::DestroyDebugUtilsMessenger()
 #endif
 }
 
+//------------------------------------------------------------------------------
 #ifdef VULKAN_DEBUG
 static VkBool32 DebugUtilsCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT types, const VkDebugUtilsMessengerCallbackDataEXT* callback_data, void* user_data)
 {
@@ -187,6 +204,7 @@ void GPUDevice::CreateSurface()
     ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to create window vk_surface.");
 }
 
+//------------------------------------------------------------------------------
 void GPUDevice::DestroySurface()
 {
     vkDestroySurfaceKHR(vk_instance, vk_surface, vk_allocation_callbacks);
@@ -289,6 +307,7 @@ void GPUDevice::DestroyPhysicalDevices()
     vkDestroyDevice(vk_device, vk_allocation_callbacks);
 }
 
+//------------------------------------------------------------------------------
 void GPUDevice::SetSurfaceFormat()
 {
     const VkFormat surfaceImageFormats[] = {VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_B8G8R8_UNORM, VK_FORMAT_R8G8B8_UNORM};
@@ -318,6 +337,7 @@ void GPUDevice::SetSurfaceFormat()
     vk_surface_format = surfaceSupportedFormats[0];
 }
 
+//------------------------------------------------------------------------------
 bool GPUDevice::SetPresentMode(VkPresentModeKHR requestedPresentMode)
 {
     uint32 surfacePresentModesCount;
@@ -554,6 +574,7 @@ void GPUDevice::DestroyGPUTimestampManager()
     allocator->deallocate(gpu_timestamp_manager, sizeof(GPUTimestampManager));
 }
 
+//------------------------------------------------------------------------------
 void GPUDevice::CreateCommandBuffers()
 {
     uint8* memory = (uint8*)allocator->allocate(sizeof(CommandBufferRing) + sizeof(CommandBuffer*) * 128);
@@ -563,6 +584,7 @@ void GPUDevice::CreateCommandBuffers()
     queued_command_buffers = (CommandBuffer**)(memory + sizeof(CommandBufferRing));
 }
 
+//------------------------------------------------------------------------------
 void GPUDevice::DestroyCommandBuffers()
 {
     allocator->deallocate(command_buffer_ring, sizeof(CommandBufferRing));
@@ -570,14 +592,78 @@ void GPUDevice::DestroyCommandBuffers()
 }
 
 //------------------------------------------------------------------------------
-void GPUDevice::CreateSampler(){}
+BufferHandle GPUDevice::CreateBuffer(const char* name, ResourceUsageType usage, uint32 size, void* data, VkBufferUsageFlags flags)
+{
+    return 0;
+}
 //------------------------------------------------------------------------------
-void GPUDevice::CreateBuffer(){}
+TextureHandle GPUDevice::CreateTexture(const char* name, void* data, VkFormat format, Texture::Type type, uint16 width, uint16 height, uint16 depth, uint8 mipmaps, uint8 flags)
+{
+    return 0;
+}
 //------------------------------------------------------------------------------
-void GPUDevice::CreateTexture(){}
+PipelineHandle GPUDevice::CreatePipeline()
+{
+    return 0;
+}
 //------------------------------------------------------------------------------
-void GPUDevice::CreateRenderPass(){}
+SamplerHandle GPUDevice::CreateSampler(const char* name, VkFilter min_filter, VkFilter mag_filter, VkSamplerMipmapMode mip_filter, VkSamplerAddressMode address_mode_u, VkSamplerAddressMode address_mode_v, VkSamplerAddressMode address_mode_w)
+{
+    SamplerHandle handle = samplers.obtainResource();
+    if (handle == INVALID_INDEX)
+        return handle;
 
+    Sampler* sampler = (Sampler*)samplers.accessResouce(handle);
+
+    sampler->name = name;
+
+    sampler->min_filter = min_filter;
+    sampler->mag_filter = mag_filter;
+    sampler->mip_filter = mip_filter;
+
+    sampler->address_mode_u = address_mode_u;
+    sampler->address_mode_v = address_mode_v;
+    sampler->address_mode_w = address_mode_w;
+
+    VkSamplerCreateInfo create_info {};
+    create_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    create_info.addressModeU = address_mode_u;
+    create_info.addressModeV = address_mode_v;
+    create_info.addressModeW = address_mode_w;
+    create_info.minFilter = min_filter;
+    create_info.magFilter = mag_filter;
+    create_info.mipmapMode = mip_filter;
+    create_info.anisotropyEnable = 0;
+    create_info.compareEnable = 0;
+    create_info.unnormalizedCoordinates = 0;
+    create_info.borderColor = VkBorderColor::VK_BORDER_COLOR_INT_OPAQUE_WHITE;
+    
+    vkCreateSampler(vk_device, &create_info, vk_allocation_callbacks, &sampler->vk_sampler);
+    SetResourceName(VK_OBJECT_TYPE_SAMPLER, (uint64)sampler->vk_sampler, name);
+
+    return handle;
+}
+
+//------------------------------------------------------------------------------
+DescriptorSetLayoutHandle GPUDevice::CreateDescriptorSetLayout()
+{
+    return 0;
+}
+//------------------------------------------------------------------------------
+DescriptorSetHandle GPUDevice::CreateDescriptorSet()
+{
+    return 0;
+}
+//------------------------------------------------------------------------------
+RenderPassHandle GPUDevice::CreateRenderPass()
+{
+    return 0;
+}
+//------------------------------------------------------------------------------
+ShaderStateHandle GPUDevice::CreateShaderState()
+{
+    return 0;
+}
 
 //------------------------------------------------------------------------------
 VkBool32 GPUDevice::GetFamilyQueue(VkPhysicalDevice pDevice)
@@ -608,6 +694,18 @@ VkBool32 GPUDevice::GetFamilyQueue(VkPhysicalDevice pDevice)
 }
 
 //------------------------------------------------------------------------------
+void GPUDevice::SetResourceName(VkObjectType type, uint64 handle, const char* name)
+{
+    if (!(m_uFlags & Flags::DebugUtilsExtensionExist))
+        return;
+
+    VkDebugUtilsObjectNameInfoEXT name_info {};
+    name_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+    name_info.objectType = type;
+    name_info.objectHandle = handle;
+    name_info.pObjectName = name;
+    pfnSetDebugUtilsObjectNameEXT(vk_device, &name_info);
+}
 
 } // namespace Graphics
 } // namespace Raptor

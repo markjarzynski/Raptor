@@ -27,7 +27,7 @@ public:
 
     bool framebufferResized = false;
 
-private:
+public:
 
     int width;
     int height;

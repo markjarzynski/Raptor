@@ -9,6 +9,7 @@
 #include <vk_mem_alloc.h>
 
 #include <EASTL/allocator.h>
+#include <EASTL/vector.h>
 
 #include "Service.h"
 #include "Window.h"
@@ -36,6 +37,9 @@ class GPUDevice
 {
     using Allocator = eastl::allocator;
 
+    template <typename T, typename Allocator>
+    using Vector = eastl::vector<T, Allocator>;
+
 public:
 
     GPUDevice(Window& window, Allocator& allocator, uint32 flags = 0, uint32 gpu_time_queries_per_frame = 32);
@@ -43,6 +47,15 @@ public:
 
     GPUDevice(const GPUDevice &) = delete;
     GPUDevice &operator=(const GPUDevice &) = delete;
+
+    BufferHandle CreateBuffer(const char* name, ResourceUsageType usage = ResourceUsageType::Immutable, uint32 size = 0, void* data = nullptr, VkBufferUsageFlags flags = 0);
+    TextureHandle CreateTexture(const char* name, void* data = nullptr, VkFormat format = VK_FORMAT_UNDEFINED, Texture::Type type = Texture::Type::Texture2D, uint16 width = 1, uint16 height = 1, uint16 depth = 1, uint8 mipmaps = 1, uint8 flags = 0);
+    PipelineHandle CreatePipeline();
+    SamplerHandle CreateSampler(const char* name, VkFilter min_filter = VK_FILTER_NEAREST, VkFilter mag_filter = VK_FILTER_NEAREST, VkSamplerMipmapMode mip_filter = VK_SAMPLER_MIPMAP_MODE_NEAREST, VkSamplerAddressMode address_mode_u = VK_SAMPLER_ADDRESS_MODE_REPEAT, VkSamplerAddressMode address_mode_v = VK_SAMPLER_ADDRESS_MODE_REPEAT, VkSamplerAddressMode address_mode_w = VK_SAMPLER_ADDRESS_MODE_REPEAT);
+    DescriptorSetLayoutHandle CreateDescriptorSetLayout();
+    DescriptorSetHandle CreateDescriptorSet();
+    RenderPassHandle CreateRenderPass();
+    ShaderStateHandle CreateShaderState();
 
     Window* window;
     Allocator* allocator;
@@ -85,13 +98,8 @@ private:
     void CreateCommandBuffers();
     void DestroyCommandBuffers();
 
-
-    void CreateSampler();
-    void CreateBuffer();
-    void CreateTexture();
-    void CreateRenderPass();
-
     VkBool32 GetFamilyQueue(VkPhysicalDevice pDevice);
+    void SetResourceName(VkObjectType type, uint64 handle, const char* name);
     
 public:
 
@@ -123,7 +131,6 @@ public:
     VkFence vk_command_buffer_executed_fence[MAX_SWAPCHAIN_IMAGES];
     static const uint32 QUERIES_PER_FRAME = 32;
     GPUTimestampManager* gpu_timestamp_manager = nullptr;
-    //CommandBufferRing command_buffer_ring;
     CommandBuffer** queued_command_buffers = nullptr;
 
     ResourcePool buffers;
@@ -136,10 +143,30 @@ public:
     ResourcePool command_buffers;
     ResourcePool shaders;
 
+    uint32 image_index;
+    uint32 current_frame;
+    uint32 previous_frame;
+    uint32 absolute_frame;
+
+    Vector<ResourceUpdate, Allocator> resource_deleting_queue;
+    Vector<DescriptorSetUpdate, Allocator> descriptor_set_updates;
+    
+    BufferHandle fullscreen_vertex_buffer;
+    RenderPassHandle swapchain_pass;
+    SamplerHandle default_sampler;
+
+    TextureHandle dummy_texture;
+    BufferHandle dummy_constant_buffer;
+
+    TextureHandle depth_texture;
+
+    RenderPassOutput swapchain_output;
+    
     enum Flags : uint32
     {
         DebugUtilsExtensionExist        = 0x1 << 0,
         EnableGPUTimeQueries            = 0x1 << 1,
+        TimestampsEnabled               = 0x1 << 2,
     };
     uint32 m_uFlags = 0u;
 

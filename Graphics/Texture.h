@@ -26,7 +26,7 @@ struct Texture
 
     TextureHandle handle;
 
-    enum Type
+    enum class Type
     {
         Texture1D, Texture2D, Texture3D, Texture1DArray, Texture2DArray, TextureCubeArray, Max,
     };
