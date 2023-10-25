@@ -8,18 +8,18 @@ namespace Graphics
 {
 struct Buffer
 {
-    VkBuffer buffer;
-    VmaAllocation vmaAllocation;
-    VkDeviceMemory deviceMemory;
-    VkDeviceSize deviceSize;
+    VkBuffer vk_buffer;
+    VmaAllocation vma_allocation;
+    VkDeviceMemory vk_device_memory;
+    VkDeviceSize vk_device_size;
 
-    VkBufferUsageFlags typeFlags = 0;
+    VkBufferUsageFlags flags = 0;
     ResourceUsageType usage = ResourceUsageType::Immutable;
     uint32 size = 0;
-    uint32 globalOffset = 0;
+    uint32 global_offset = 0;
 
     BufferHandle handle;
-    BufferHandle parentBuffer;
+    BufferHandle parent_buffer;
 
     const char* name = nullptr;
 }; // struct Buffer

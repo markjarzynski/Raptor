@@ -160,6 +160,8 @@ public:
 
     TextureHandle depth_texture;
 
+    BufferHandle dynamic_buffer;
+
     RenderPassOutput swapchain_output;
     
     enum Flags : uint32

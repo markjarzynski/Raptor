@@ -594,7 +594,56 @@ void GPUDevice::DestroyCommandBuffers()
 //------------------------------------------------------------------------------
 BufferHandle GPUDevice::CreateBuffer(const char* name, ResourceUsageType usage, uint32 size, void* data, VkBufferUsageFlags flags)
 {
-    return 0;
+    BufferHandle handle = buffers.obtainResource();
+    if (handle == INVALID_INDEX)
+        return handle;
+
+    Buffer* buffer = (Buffer*)buffers.accessResouce(handle);
+
+    buffer->name = name;
+    buffer->size = size;
+    buffer->flags = flags;
+    buffer->usage = usage;
+    buffer->handle = handle;
+    buffer->global_offset = 0;
+    buffer->parent_buffer = InvalidBuffer;
+
+    static const VkBufferUsageFlags DYNAMIC_BUFFER_MASK = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    const bool USE_GLOBAL_BUFFER = (flags & DYNAMIC_BUFFER_MASK) != 0;
+
+    if (usage == ResourceUsageType::Dynamic && USE_GLOBAL_BUFFER)
+    {
+        buffer->parent_buffer = dynamic_buffer;
+        return handle;
+    }
+
+    VkBufferCreateInfo buffer_info {};
+    buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    buffer_info.size = (size > 0) ? size : 1;
+    
+    VmaAllocationCreateInfo alloc_create_info {};
+    alloc_create_info.flags = VMA_ALLOCATION_CREATE_STRATEGY_BEST_FIT_BIT;
+    alloc_create_info.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+    VmaAllocationInfo alloc_info {};
+
+    VkResult result = vmaCreateBuffer(vma_allocator, &buffer_info, &alloc_create_info, &buffer->vk_buffer, &buffer->vma_allocation, &alloc_info);
+    ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to allocate buffer.");
+
+    SetResourceName(VK_OBJECT_TYPE_BUFFER, (uint64)buffer->vk_buffer, name);
+
+    buffer->vk_device_memory = alloc_info.deviceMemory;
+
+    if (data)
+    {
+        void* memory;
+        vmaMapMemory(vma_allocator, buffer->vma_allocation, &memory);
+        memcpy(memory, data, (size_t)size);
+        vmaUnmapMemory(vma_allocator, buffer->vma_allocation);
+    }
+
+    return handle;
 }
 //------------------------------------------------------------------------------
 TextureHandle GPUDevice::CreateTexture(const char* name, void* data, VkFormat format, Texture::Type type, uint16 width, uint16 height, uint16 depth, uint8 mipmaps, uint8 flags)
