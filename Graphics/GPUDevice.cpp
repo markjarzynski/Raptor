@@ -81,7 +81,15 @@ GPUDevice::GPUDevice(Window& window, Allocator& allocator, uint32 flags, uint32 
 
     default_sampler = CreateSampler("Sampler Default", VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
     fullscreen_vertex_buffer = CreateBuffer("Fullscreen Vertex Buffer", ResourceUsageType::Immutable, 0, nullptr, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-    depth_texture = CreateTexture("Depth Texture", nullptr, VK_FORMAT_D32_SFLOAT, Texture::Type::Texture2D, window.width, window.height, 1, 1, 0);
+
+    CreateTextureParams create_texture_params {};
+    create_texture_params.vk_format = VK_FORMAT_D32_SFLOAT;
+    create_texture_params.vk_image_type = VK_IMAGE_TYPE_2D;
+    create_texture_params.vk_image_view_type = VK_IMAGE_VIEW_TYPE_2D;
+    create_texture_params.width = window.width;
+    create_texture_params.height = window.height;
+    create_texture_params.name = "Depth Texture";
+    depth_texture = CreateTexture(create_texture_params);
 
 }
 
@@ -595,7 +603,7 @@ void GPUDevice::DestroyCommandBuffers()
 BufferHandle GPUDevice::CreateBuffer(const char* name, ResourceUsageType usage, uint32 size, void* data, VkBufferUsageFlags flags)
 {
     BufferHandle handle = buffers.obtainResource();
-    if (handle == INVALID_INDEX)
+    if (handle == InvalidBuffer)
         return handle;
 
     Buffer* buffer = (Buffer*)buffers.accessResouce(handle);
@@ -645,11 +653,69 @@ BufferHandle GPUDevice::CreateBuffer(const char* name, ResourceUsageType usage, 
 
     return handle;
 }
+
 //------------------------------------------------------------------------------
-TextureHandle GPUDevice::CreateTexture(const char* name, void* data, VkFormat format, Texture::Type type, uint16 width, uint16 height, uint16 depth, uint8 mipmaps, uint8 flags)
+static void CreateTexture(GPUDevice& gpu_device, const CreateTextureParams& params, TextureHandle handle, Texture* texture)
 {
-    return 0;
+    texture->vk_format = params.vk_format;
+    texture->vk_image_type = params.vk_image_type;
+    texture->vk_image_view_type = params.vk_image_view_type;
+
+    texture->width = params.width;
+    texture->height = params.height;
+    texture->depth = params.depth;
+    texture->mipmaps = params.mipmaps;
+    texture->flags = params.flags;
+    
+    texture->sampler = nullptr;
+
+    texture->handle = handle;
+
+    VkImageCreateInfo create_info {};
+    create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    create_info.flags = 0;
+    create_info.imageType = params.vk_image_type;
+    create_info.extent.width = params.width;
+    create_info.extent.height = params.height;
+    create_info.mipLevels = params.mipmaps;
+    create_info.arrayLayers = 1;
+    create_info.samples = VK_SAMPLE_COUNT_1_BIT;
+    create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+
+    const bool is_render_target = params.flags & Texture::Flags::RenderTarget;
+
+    create_info.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+    create_info.usage |= (params.flags & Texture::Flags::Compute) ? VK_IMAGE_USAGE_STORAGE_BIT : 0;
+
+
+
+
+
+
+
 }
+
+//------------------------------------------------------------------------------
+TextureHandle GPUDevice::CreateTexture(const CreateTextureParams& params)
+{
+    TextureHandle handle = textures.obtainResource();
+    if (handle == InvalidTexture)
+        return handle;
+
+    Texture* texture = (Texture*)textures.accessResouce(handle);
+
+    Raptor::Graphics::CreateTexture(*this, params, handle, texture);
+
+    if (params.data)
+    {
+
+    }
+
+    return handle;
+}
+
+
+
 //------------------------------------------------------------------------------
 PipelineHandle GPUDevice::CreatePipeline()
 {
@@ -659,7 +725,7 @@ PipelineHandle GPUDevice::CreatePipeline()
 SamplerHandle GPUDevice::CreateSampler(const char* name, VkFilter min_filter, VkFilter mag_filter, VkSamplerMipmapMode mip_filter, VkSamplerAddressMode address_mode_u, VkSamplerAddressMode address_mode_v, VkSamplerAddressMode address_mode_w)
 {
     SamplerHandle handle = samplers.obtainResource();
-    if (handle == INVALID_INDEX)
+    if (handle == InvalidSampler)
         return handle;
 
     Sampler* sampler = (Sampler*)samplers.accessResouce(handle);

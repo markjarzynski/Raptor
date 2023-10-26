@@ -49,7 +49,7 @@ public:
     GPUDevice &operator=(const GPUDevice &) = delete;
 
     BufferHandle CreateBuffer(const char* name, ResourceUsageType usage = ResourceUsageType::Immutable, uint32 size = 0, void* data = nullptr, VkBufferUsageFlags flags = 0);
-    TextureHandle CreateTexture(const char* name, void* data = nullptr, VkFormat format = VK_FORMAT_UNDEFINED, Texture::Type type = Texture::Type::Texture2D, uint16 width = 1, uint16 height = 1, uint16 depth = 1, uint8 mipmaps = 1, uint8 flags = 0);
+    TextureHandle CreateTexture(const CreateTextureParams& params);
     PipelineHandle CreatePipeline();
     SamplerHandle CreateSampler(const char* name, VkFilter min_filter = VK_FILTER_NEAREST, VkFilter mag_filter = VK_FILTER_NEAREST, VkSamplerMipmapMode mip_filter = VK_SAMPLER_MIPMAP_MODE_NEAREST, VkSamplerAddressMode address_mode_u = VK_SAMPLER_ADDRESS_MODE_REPEAT, VkSamplerAddressMode address_mode_v = VK_SAMPLER_ADDRESS_MODE_REPEAT, VkSamplerAddressMode address_mode_w = VK_SAMPLER_ADDRESS_MODE_REPEAT);
     DescriptorSetLayoutHandle CreateDescriptorSetLayout();
@@ -175,6 +175,7 @@ public:
 }; // class GPUDevice
 
 static bool check_result(VkResult result);
+static void CreateTexture(GPUDevice& gpu_device, const CreateTextureParams& params, TextureHandle handle, Texture* texture);
 
 #ifdef VULKAN_DEBUG
 static VkBool32 DebugUtilsCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT types, const VkDebugUtilsMessengerCallbackDataEXT* callback_data, void* user_data);
