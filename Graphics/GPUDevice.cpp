@@ -10,6 +10,7 @@
 #include <EAStdC/EASprintf.h>
 #include <EASTL/fixed_vector.h>
 #include <EASTL/algorithm.h>
+#include <EASTL/hash_map.h>
 
 #include "GPUDevice.h"
 #include "Raptor.h"
@@ -27,6 +28,9 @@ namespace Graphics
 {
 
 using eastl::clamp;
+
+template<typename Key, typename T>
+using HashMap = eastl::hash_map<Key, T>;
 
 static const char* s_requested_layers[] = {
 #ifdef VULKAN_DEBUG
@@ -52,6 +56,7 @@ PFN_vkCmdBeginDebugUtilsLabelEXT pfnCmdBeginDebugUtilsLabelEXT;
 PFN_vkCmdEndDebugUtilsLabelEXT pfnCmdEndDebugUtilsLabelEXT;
 
 static CommandBufferRing* command_buffer_ring;
+static HashMap<uint64, VkRenderPass> render_pass_cache;
 
 //------------------------------------------------------------------------------
 GPUDevice::GPUDevice(Window& window, Allocator& allocator, uint32 flags, uint32 gpu_time_queries_per_frame)
@@ -78,10 +83,12 @@ GPUDevice::GPUDevice(Window& window, Allocator& allocator, uint32 flags, uint32 
 
     resource_deleting_queue.set_allocator(allocator);
     descriptor_set_updates.set_allocator(allocator);
+    render_pass_cache.set_allocator(allocator);
 
     default_sampler = CreateSampler("Sampler Default", VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
     fullscreen_vertex_buffer = CreateBuffer("Fullscreen Vertex Buffer", ResourceUsageType::Immutable, 0, nullptr, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 
+    // create depth texture
     CreateTextureParams create_texture_params {};
     create_texture_params.vk_format = VK_FORMAT_D32_SFLOAT;
     create_texture_params.vk_image_type = VK_IMAGE_TYPE_2D;
@@ -90,6 +97,17 @@ GPUDevice::GPUDevice(Window& window, Allocator& allocator, uint32 flags, uint32 
     create_texture_params.height = window.height;
     create_texture_params.name = "Depth Texture";
     depth_texture = CreateTexture(create_texture_params);
+
+    // cache depth texture format
+    swapchain_output.depth(VK_FORMAT_D32_SFLOAT);
+
+    CreateRenderPassParams create_render_pass_params {};
+    create_render_pass_params.type = RenderPass::Type::Swapchain;
+    create_render_pass_params.color_operation = RenderPassOperation::Clear;
+    create_render_pass_params.depth_operation = RenderPassOperation::Clear;
+    create_render_pass_params.stencil_operation = RenderPassOperation::Clear;
+    create_render_pass_params.name = "Swapchain";
+    swapchain_pass = CreateRenderPass(create_render_pass_params);
 
 }
 
@@ -606,7 +624,7 @@ BufferHandle GPUDevice::CreateBuffer(const char* name, ResourceUsageType usage, 
     if (handle == InvalidBuffer)
         return handle;
 
-    Buffer* buffer = (Buffer*)buffers.accessResouce(handle);
+    Buffer* buffer = (Buffer*)buffers.accessResource(handle);
 
     buffer->name = name;
     buffer->size = size;
@@ -657,42 +675,80 @@ BufferHandle GPUDevice::CreateBuffer(const char* name, ResourceUsageType usage, 
 //------------------------------------------------------------------------------
 static void CreateTexture(GPUDevice& gpu_device, const CreateTextureParams& params, TextureHandle handle, Texture* texture)
 {
+    VkResult result;
+
     texture->vk_format = params.vk_format;
     texture->vk_image_type = params.vk_image_type;
     texture->vk_image_view_type = params.vk_image_view_type;
-
     texture->width = params.width;
     texture->height = params.height;
     texture->depth = params.depth;
     texture->mipmaps = params.mipmaps;
     texture->flags = params.flags;
-    
     texture->sampler = nullptr;
-
     texture->handle = handle;
 
-    VkImageCreateInfo create_info {};
-    create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    create_info.flags = 0;
-    create_info.imageType = params.vk_image_type;
-    create_info.extent.width = params.width;
-    create_info.extent.height = params.height;
-    create_info.mipLevels = params.mipmaps;
-    create_info.arrayLayers = 1;
-    create_info.samples = VK_SAMPLE_COUNT_1_BIT;
-    create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+    VkImageCreateInfo image_info {};
+    image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    image_info.format = params.vk_format;
+    image_info.flags = 0;
+    image_info.imageType = params.vk_image_type;
+    image_info.extent.width = params.width;
+    image_info.extent.height = params.height;
+    image_info.extent.depth = params.depth;
+    image_info.mipLevels = params.mipmaps;
+    image_info.arrayLayers = 1;
+    image_info.samples = VK_SAMPLE_COUNT_1_BIT;
+    image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
 
-    const bool is_render_target = params.flags & Texture::Flags::RenderTarget;
+    image_info.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+    image_info.usage |= (params.flags & Texture::Flags::Compute) ? VK_IMAGE_USAGE_STORAGE_BIT : 0;
 
-    create_info.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
-    create_info.usage |= (params.flags & Texture::Flags::Compute) ? VK_IMAGE_USAGE_STORAGE_BIT : 0;
+    if (TextureFormat::HasDepthOrStencil(params.vk_format))
+    {
+        image_info.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    }
+    else
+    {
+        image_info.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        image_info.usage |= (params.flags & Texture::Flags::RenderTarget) ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : 0;
+    }
 
+    image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
+    VmaAllocationCreateInfo alloc_info {};
+    alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
+    result = vmaCreateImage(gpu_device.vma_allocator, &image_info, &alloc_info, &texture->vk_image, &texture->vma_allocation, nullptr);
+    ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to alloc memory for Texture.");
 
+    gpu_device.SetResourceName(VK_OBJECT_TYPE_IMAGE, (uint64)texture->vk_image, params.name);
 
+    VkImageViewCreateInfo view_info {};
+    view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    view_info.image = texture->vk_image;
+    view_info.viewType = params.vk_image_view_type;
+    view_info.format = params.vk_format;
 
+    if (TextureFormat::HasDepthOrStencil(params.vk_format))
+    {
+        view_info.subresourceRange.aspectMask = (TextureFormat::HasDepth(params.vk_format)) ? VK_IMAGE_ASPECT_DEPTH_BIT : 0;
+    }
+    else
+    {
+        view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    }
 
+    view_info.subresourceRange.levelCount = 1;
+    view_info.subresourceRange.layerCount = 1;
+
+    result = vkCreateImageView(gpu_device.vk_device, &view_info, gpu_device.vk_allocation_callbacks, &texture->vk_image_view);
+    ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to create Image View for Texture.");
+
+    gpu_device.SetResourceName(VK_OBJECT_TYPE_IMAGE_VIEW, (uint64)texture->vk_image_view, params.name);
+
+    texture->vk_image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 }
 
 //------------------------------------------------------------------------------
@@ -702,13 +758,71 @@ TextureHandle GPUDevice::CreateTexture(const CreateTextureParams& params)
     if (handle == InvalidTexture)
         return handle;
 
-    Texture* texture = (Texture*)textures.accessResouce(handle);
+    Texture* texture = (Texture*)textures.accessResource(handle);
 
     Raptor::Graphics::CreateTexture(*this, params, handle, texture);
 
+
     if (params.data)
     {
+        VkBufferCreateInfo buffer_info {};
+        buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        buffer_info.size = params.width * params.height * 4;
+        
+        VmaAllocationCreateInfo alloc_create_info {};
+        alloc_create_info.flags = VMA_ALLOCATION_CREATE_STRATEGY_BEST_FIT_BIT;
+        alloc_create_info.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
+        VmaAllocationInfo alloc_info {};
+        VkBuffer staging_buffer;
+        VmaAllocation staging_alloc;
+        VkResult result = vmaCreateBuffer(vma_allocator, &buffer_info, &alloc_create_info, &staging_buffer, &staging_alloc, &alloc_info);
+        ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to create buffer during CreateTexture.");
+
+        // copy buffer data
+        void* dst_data;
+        vmaMapMemory(vma_allocator, staging_alloc, &dst_data);
+        memcpy(dst_data, params.data, static_cast<size_t>(buffer_info.size));
+        vmaUnmapMemory(vma_allocator, staging_alloc);
+
+        // execute command buffer
+        VkCommandBufferBeginInfo begin_info = {};
+        begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+        CommandBuffer* command_buffer = GetInstantCommandBuffer();
+        vkBeginCommandBuffer(command_buffer->vk_command_buffer, &begin_info);
+
+        VkBufferImageCopy region = {};
+        region.bufferOffset = 0;
+        region.bufferRowLength = 0;
+        region.bufferImageHeight = 0;
+        region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        region.imageSubresource.mipLevel = 0;
+        region.imageSubresource.baseArrayLayer = 0;
+        region.imageSubresource.layerCount = 1;
+        region.imageOffset = {0, 0, 0};
+        region.imageExtent = {params.width, params.height, params.depth};
+
+        TransitionImageLayout(command_buffer->vk_command_buffer, texture->vk_image, texture->vk_format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, false);
+        vkCmdCopyBufferToImage(command_buffer->vk_command_buffer, staging_buffer, texture->vk_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+        TransitionImageLayout(command_buffer->vk_command_buffer, texture->vk_image, texture->vk_format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, false);
+
+        vkEndCommandBuffer(command_buffer->vk_command_buffer);
+
+        VkSubmitInfo submit_info {};
+        submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submit_info.pCommandBuffers = &command_buffer->vk_command_buffer;
+
+        vkQueueSubmit(vk_queue, 1, &submit_info, VK_NULL_HANDLE);
+        vkQueueWaitIdle(vk_queue);
+
+        vmaDestroyBuffer(vma_allocator, staging_buffer, staging_alloc);
+
+        vkResetCommandBuffer(command_buffer->vk_command_buffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+
+        texture->vk_image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     }
 
     return handle;
@@ -728,7 +842,7 @@ SamplerHandle GPUDevice::CreateSampler(const char* name, VkFilter min_filter, Vk
     if (handle == InvalidSampler)
         return handle;
 
-    Sampler* sampler = (Sampler*)samplers.accessResouce(handle);
+    Sampler* sampler = (Sampler*)samplers.accessResource(handle);
 
     sampler->name = name;
 
@@ -769,9 +883,224 @@ DescriptorSetHandle GPUDevice::CreateDescriptorSet()
 {
     return 0;
 }
+
 //------------------------------------------------------------------------------
-RenderPassHandle GPUDevice::CreateRenderPass()
+static void CreateSwapchainPass(GPUDevice& gpu_device, const CreateRenderPassParams params, RenderPass* render_pass)
 {
+    VkAttachmentDescription color_attachment {};
+    color_attachment.format = gpu_device.vk_surface_format.format;
+    color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    VkAttachmentReference color_attachment_ref {};
+    color_attachment_ref.attachment = 0;
+    color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentDescription depth_attachment {};
+    Texture* depth_texture = (Texture*)gpu_device.textures.accessResource(gpu_device.depth_texture);
+    depth_attachment.format = depth_texture->vk_format;
+    depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentReference depth_attachment_ref {};
+    depth_attachment_ref.attachment = 1;
+    depth_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subpass {};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &color_attachment_ref;
+    subpass.pDepthStencilAttachment = &depth_attachment_ref;
+
+    VkAttachmentDescription attachments[] = {color_attachment, depth_attachment};
+    VkRenderPassCreateInfo render_pass_info {};
+    render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    render_pass_info.attachmentCount = 2;
+    render_pass_info.pAttachments = attachments;
+    render_pass_info.subpassCount = 1;
+    render_pass_info.pSubpasses = &subpass;
+
+    VkResult result = vkCreateRenderPass(gpu_device.vk_device, &render_pass_info, nullptr, &render_pass->vk_render_pass);
+    ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: CreateRenderPass.");
+
+    gpu_device.SetResourceName(VK_OBJECT_TYPE_RENDER_PASS, (uint64)render_pass->vk_render_pass, params.name);
+
+    VkFramebufferCreateInfo framebuffer_info {};
+    framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    framebuffer_info.renderPass = render_pass->vk_render_pass;
+    framebuffer_info.attachmentCount = 2;
+    framebuffer_info.width = gpu_device.swapchain_width;
+    framebuffer_info.height = gpu_device.swapchain_height;
+    framebuffer_info.layers = 1;
+
+    VkImageView framebuffer_attachments[2];
+    framebuffer_attachments[1] = depth_texture->vk_image_view;
+
+    for (size_t i = 0; i < gpu_device.swapchain_image_count; i++)
+    {
+        framebuffer_attachments[0] = gpu_device.vk_swapchain_image_views[i];
+        framebuffer_info.pAttachments = framebuffer_attachments;
+
+        vkCreateFramebuffer(gpu_device.vk_device, &framebuffer_info, nullptr, &gpu_device.vk_swapchain_framebuffers[i]);
+        gpu_device.SetResourceName(VK_OBJECT_TYPE_FRAMEBUFFER, (uint64)gpu_device.vk_swapchain_framebuffers[i], params.name);
+    }
+
+    render_pass->width = gpu_device.swapchain_width;
+    render_pass->height = gpu_device.swapchain_height;
+
+    VkCommandBufferBeginInfo begin_info {};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    CommandBuffer* command_buffer = gpu_device.GetInstantCommandBuffer();
+    vkBeginCommandBuffer(command_buffer->vk_command_buffer, &begin_info);
+
+    VkBufferImageCopy region {};
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = 1;
+    region.imageOffset = {0, 0, 0};
+    region.imageExtent = {gpu_device.swapchain_width, gpu_device.swapchain_height, 1};
+
+    for (size_t i = 0; i < gpu_device.swapchain_image_count; i++)
+    {
+        TransitionImageLayout(command_buffer->vk_command_buffer, gpu_device.vk_swapchain_images[i], gpu_device.vk_surface_format.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, false);
+    }
+
+    vkEndCommandBuffer(command_buffer->vk_command_buffer);
+
+    VkSubmitInfo submit_info {};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &command_buffer->vk_command_buffer;
+
+    vkQueueSubmit(gpu_device.vk_queue, 1, &submit_info, VK_NULL_HANDLE);
+    vkQueueWaitIdle(gpu_device.vk_queue);
+}
+
+static RenderPassOutput CreateRenderPassOutput(GPUDevice& gpu_device, const CreateRenderPassParams params)
+{
+    RenderPassOutput output;
+    output.reset();
+
+    for (uint32 i = 0; i < params.num_render_targets; i++)
+    {
+        Texture* texture = (Texture*)gpu_device.textures.accessResource(params.output_textures[i]);
+        output.color(texture->vk_format);
+    }
+
+    if (params.depth_stencil_texture != InvalidTexture)
+    {
+        Texture* texture = (Texture*)gpu_device.textures.accessResource(params.depth_stencil_texture);
+        output.depth(texture->vk_format);   
+    }
+
+    output.setOperations(params.color_operation, params.depth_operation, params.stencil_operation);
+
+    return output;
+}
+
+static VkRenderPass GetRenderPass(GPUDevice& gpu_device, const RenderPassOutput& output, const char* name)
+{
+    uint64 hash = 0; // TODO hash output
+
+    VkRenderPass vk_render_pass = render_pass_cache.at(hash);
+    if (vk_render_pass)
+        return vk_render_pass;
+
+    vk_render_pass = CreateRenderPass(gpu_device, output, name);
+    //eastl::hash_map<uint64, VkRenderPass>::value_type pair(hash, vk_render_pass);
+    HashMap<uint64, VkRenderPass>::value_type pair(hash, vk_render_pass);
+    render_pass_cache.insert(pair);
+
+    return vk_render_pass;
+}
+
+static VkRenderPass CreateRenderPass(GPUDevice& gpu_device, const RenderPassOutput& output, const char* name)
+{
+    // TODO
+
+
+    VkRenderPassCreateInfo render_pass_info {};
+    render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    // render_pass_info.attachmentCount = ( active_attachments ? active_attachments - 1 : 0 ) + depth_stencil_count;
+    // render_pass_info.pAttachments = attachments;
+    // render_pass_info.subpassCount = 1;
+    // render_pass_info.pSubpasses = &subpass;
+
+    VkRenderPass vk_render_pass;
+    // VKResult result = vkCreateRenderPass(gpu_device.vk_device, &render_pass_info, nullptr, &vk_render_pass);
+    return vk_render_pass;
+}
+
+static void CreateFramebuffer(GPUDevice& gpu_device, RenderPass* render_pass, const TextureHandle* output_textures, uint32 num_render_targets, TextureHandle depth_stencil_texture)
+{
+    // TODO
+}
+
+//------------------------------------------------------------------------------
+RenderPassHandle GPUDevice::CreateRenderPass(CreateRenderPassParams params)
+{
+    RenderPassHandle handle = render_passes.obtainResource();
+    if (handle == InvalidRenderPass)
+        return handle;
+
+    RenderPass* render_pass = (RenderPass*)render_passes.accessResource(handle);
+    render_pass->type = params.type;
+    render_pass->dispatchX = 0;
+    render_pass->dispatchY = 0;
+    render_pass->dispatchZ = 0;
+    render_pass->name = params.name;
+    render_pass->vk_frame_buffer = nullptr;
+    render_pass->vk_render_pass = nullptr;
+    render_pass->scaleX = params.scale_x;
+    render_pass->scaleY = params.scale_y;
+    render_pass->resize = params.resize;
+
+    for ( uint32 i = 0; i < params.num_render_targets; ++i )
+    {
+        Texture* texture = (Texture*)textures.accessResource(params.output_textures[i]);
+        render_pass->width = texture->width;
+        render_pass->height = texture->height;
+
+        render_pass->outputTextures[i] = params.output_textures[i];
+    }
+
+    render_pass->outputDepth = params.depth_stencil_texture;
+
+    switch (params.type)
+    {
+    case RenderPass::Type::Swapchain:
+    {
+        CreateSwapchainPass(*this, params, render_pass);
+        break;
+    }
+    case RenderPass::Type::Geometry:
+    {
+        render_pass->output = CreateRenderPassOutput(*this, params);
+        render_pass->vk_render_pass = GetRenderPass(*this, render_pass->output, params.name);
+
+        CreateFramebuffer(*this, render_pass, params.output_textures, params.num_render_targets, params.depth_stencil_texture);
+    }
+    case RenderPass::Type::Compute:
+    default:
+        break;
+    }
+
     return 0;
 }
 //------------------------------------------------------------------------------
@@ -820,6 +1149,50 @@ void GPUDevice::SetResourceName(VkObjectType type, uint64 handle, const char* na
     name_info.objectHandle = handle;
     name_info.pObjectName = name;
     pfnSetDebugUtilsObjectNameEXT(vk_device, &name_info);
+}
+
+//------------------------------------------------------------------------------
+CommandBuffer* GPUDevice::GetInstantCommandBuffer()
+{
+    CommandBuffer* command_buffer = command_buffer_ring->GetCommandBufferInstant(current_frame, false);
+    return command_buffer;
+}
+
+//------------------------------------------------------------------------------
+static void TransitionImageLayout(VkCommandBuffer command_buffer, VkImage vk_image, VkFormat vk_format, VkImageLayout old_layout, VkImageLayout new_layout, bool isDepth)
+{
+    VkImageMemoryBarrier barrier = {};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout = old_layout;
+    barrier.newLayout = new_layout;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image = vk_image;
+    barrier.subresourceRange.aspectMask = (isDepth) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+
+    VkPipelineStageFlags src_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    VkPipelineStageFlags dst_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+
+    if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED && new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+    {
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        src_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        dst_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    }
+    else if (old_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && new_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+    {
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        src_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        dst_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    }
+
+    vkCmdPipelineBarrier(command_buffer, src_stage, dst_stage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 }
 
 } // namespace Graphics

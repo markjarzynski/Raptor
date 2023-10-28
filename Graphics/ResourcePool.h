@@ -26,7 +26,7 @@ struct ResourcePool
     void releaseResource(uint32 handle);
     void freeAllResources();
 
-    void* accessResouce(uint32 handle);
+    void* accessResource(uint32 handle);
     const void* accessResource(uint32 handle) const;
 
 }; // struct ResourcePool

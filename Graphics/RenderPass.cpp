@@ -13,7 +13,7 @@ RenderPassOutput& RenderPassOutput::reset()
         colorFormats[i] = VK_FORMAT_UNDEFINED;
     }
     depthSteniclFormat = VK_FORMAT_UNDEFINED;
-    colorOperation = depthOperation = stencilOperation = RenderPassOutput::Operation::Any;
+    colorOperation = depthOperation = stencilOperation = RenderPassOperation::Any;
     return *this;
 }
 
@@ -29,7 +29,7 @@ RenderPassOutput& RenderPassOutput::depth(VkFormat format)
     return *this;
 }
 
-RenderPassOutput& RenderPassOutput::setOperations(RenderPassOutput::Operation color, RenderPassOutput::Operation depth, RenderPassOutput::Operation stencil)
+RenderPassOutput& RenderPassOutput::setOperations(RenderPassOperation color, RenderPassOperation depth, RenderPassOperation stencil)
 {
     colorOperation = color;
     depthOperation = depth;

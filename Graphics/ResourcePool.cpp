@@ -78,7 +78,7 @@ void ResourcePool::freeAllResources()
     }
 }
 
-void* ResourcePool::accessResouce(uint32 handle)
+void* ResourcePool::accessResource(uint32 handle)
 {
     if (handle != INVALID_INDEX)
     {

@@ -13,7 +13,7 @@ namespace Graphics
 struct Texture
 {
     VkImage vk_image;
-    VkImageView vl_image_view;
+    VkImageView vk_image_view;
     VkFormat vk_format;
     VkImageLayout vk_image_layout;
     VmaAllocation vma_allocation;
@@ -64,6 +64,29 @@ struct CreateTextureParams
     const char* name = nullptr;
     void* data = nullptr;
 }; // struct CreateTextureParams
+
+namespace TextureFormat
+{
+
+inline bool HasDepth(VkFormat vk_format)
+{
+    return (vk_format >= VK_FORMAT_D16_UNORM && vk_format < VK_FORMAT_S8_UINT ) || 
+        (vk_format >= VK_FORMAT_D16_UNORM_S8_UINT && vk_format <= VK_FORMAT_D32_SFLOAT_S8_UINT);
+}
+
+inline bool HasStencil(VkFormat vk_format)
+{
+    return vk_format >= VK_FORMAT_S8_UINT && vk_format <= VK_FORMAT_D32_SFLOAT_S8_UINT;
+
+}
+
+inline bool HasDepthOrStencil(VkFormat vk_format)
+{
+    return vk_format >= VK_FORMAT_D16_UNORM && vk_format <= VK_FORMAT_D32_SFLOAT_S8_UINT;
+}
+
+} // namespace TextureFormat;
+
 
 } // namespace Graphics
 } // namespace Raptor

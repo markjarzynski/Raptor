@@ -54,13 +54,14 @@ public:
     SamplerHandle CreateSampler(const char* name, VkFilter min_filter = VK_FILTER_NEAREST, VkFilter mag_filter = VK_FILTER_NEAREST, VkSamplerMipmapMode mip_filter = VK_SAMPLER_MIPMAP_MODE_NEAREST, VkSamplerAddressMode address_mode_u = VK_SAMPLER_ADDRESS_MODE_REPEAT, VkSamplerAddressMode address_mode_v = VK_SAMPLER_ADDRESS_MODE_REPEAT, VkSamplerAddressMode address_mode_w = VK_SAMPLER_ADDRESS_MODE_REPEAT);
     DescriptorSetLayoutHandle CreateDescriptorSetLayout();
     DescriptorSetHandle CreateDescriptorSet();
-    RenderPassHandle CreateRenderPass();
+    RenderPassHandle CreateRenderPass(CreateRenderPassParams params);
     ShaderStateHandle CreateShaderState();
+
+    void SetResourceName(VkObjectType type, uint64 handle, const char* name);
+    CommandBuffer* GetInstantCommandBuffer();
 
     Window* window;
     Allocator* allocator;
-
-    const char* version();
 
 private:
 
@@ -99,8 +100,7 @@ private:
     void DestroyCommandBuffers();
 
     VkBool32 GetFamilyQueue(VkPhysicalDevice pDevice);
-    void SetResourceName(VkObjectType type, uint64 handle, const char* name);
-    
+
 public:
 
     VkInstance vk_instance;
@@ -174,12 +174,17 @@ public:
 
 }; // class GPUDevice
 
-static bool check_result(VkResult result);
 static void CreateTexture(GPUDevice& gpu_device, const CreateTextureParams& params, TextureHandle handle, Texture* texture);
+static void CreateSwapchainPass(GPUDevice& gpu_device, const CreateRenderPassParams params, RenderPass* render_pass);
+static RenderPassOutput CreateRenderPassOutput(GPUDevice& gpu_device, const CreateRenderPassParams params);
+static VkRenderPass GetRenderPass(GPUDevice& gpu_device, const RenderPassOutput& output, const char* name);
+static VkRenderPass CreateRenderPass(GPUDevice& gpu_device, const RenderPassOutput& output, const char* name);
 
 #ifdef VULKAN_DEBUG
 static VkBool32 DebugUtilsCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT types, const VkDebugUtilsMessengerCallbackDataEXT* callback_data, void* user_data);
 #endif
+
+static void TransitionImageLayout(VkCommandBuffer command_buffer, VkImage vk_image, VkFormat vk_format, VkImageLayout vk_image_layout, VkImageLayout vk_image_layout_new, bool isDepth);
 
 } // namespace Graphics
 } // namespace Raptor

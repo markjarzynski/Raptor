@@ -9,23 +9,23 @@ namespace Raptor
 namespace Graphics
 {
 
+enum RenderPassOperation : uint8
+{
+    Load = 0x1,
+    Clear = 0x2,
+    Any = Load | Clear,
+};
+
 class RenderPassOutput
 {
 public:
     RenderPassOutput(){}
     ~RenderPassOutput(){}
 
-    enum Operation : uint8
-    {
-        Load = 0x1,
-        Clear = 0x2,
-        Any = Load | Clear,
-    };
-
     RenderPassOutput& reset();
     RenderPassOutput& color(VkFormat format);
     RenderPassOutput& depth(VkFormat format);
-    RenderPassOutput& setOperations(Operation color, Operation depth, Operation stencil);
+    RenderPassOutput& setOperations(RenderPassOperation color, RenderPassOperation depth, RenderPassOperation stencil);
 
 private:
 
@@ -33,16 +33,16 @@ private:
     VkFormat depthSteniclFormat;
     uint32 numColorFormats;
 
-    Operation colorOperation = Operation::Any;
-    Operation depthOperation = Operation::Any;
-    Operation stencilOperation = Operation::Any;
+    RenderPassOperation colorOperation = RenderPassOperation::Any;
+    RenderPassOperation depthOperation = RenderPassOperation::Any;
+    RenderPassOperation stencilOperation = RenderPassOperation::Any;
 
 }; // class RenderPassOutput
 
 struct RenderPass
 {
-    VkRenderPass renderPass;
-    VkFramebuffer frameBuffer;
+    VkRenderPass vk_render_pass;
+    VkFramebuffer vk_frame_buffer;
 
     RenderPassOutput output;
 
@@ -72,6 +72,24 @@ struct RenderPass
     const char* name = nullptr;
 }; // struct RenderPass
 
+struct CreateRenderPassParams
+{
+    uint16 num_render_targets = 0;
+    RenderPass::Type type = RenderPass::Type::Geometry;
+
+    TextureHandle output_textures[MAX_IMAGE_OUTPUTS] = {InvalidTexture};
+    TextureHandle depth_stencil_texture = InvalidTexture;
+
+    float scale_x = 1.f;
+    float scale_y = 1.f;
+    uint8 resize = 1;
+
+    RenderPassOperation color_operation = RenderPassOperation::Any;
+    RenderPassOperation depth_operation = RenderPassOperation::Any;
+    RenderPassOperation stencil_operation = RenderPassOperation::Any;
+
+    const char* name = nullptr;
+}; // struct CreateRenderPassParams
 
 
 } // namespace Graphics
