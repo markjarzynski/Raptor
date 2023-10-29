@@ -23,5 +23,16 @@ struct Buffer
 
     const char* name = nullptr;
 }; // struct Buffer
+
+struct CreateBufferParams
+{
+    ResourceUsageType usage = ResourceUsageType::Immutable;
+    uint32 size = 0;
+    VkBufferUsageFlags flags = 0;
+    void* data = nullptr;
+    const char* name;
+}; // struct CreateBufferParams
+
+
 } // namespace Graphics
 } // namespace Raptor

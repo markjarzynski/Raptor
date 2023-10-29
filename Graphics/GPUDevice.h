@@ -48,13 +48,13 @@ public:
     GPUDevice(const GPUDevice &) = delete;
     GPUDevice &operator=(const GPUDevice &) = delete;
 
-    BufferHandle CreateBuffer(const char* name, ResourceUsageType usage = ResourceUsageType::Immutable, uint32 size = 0, void* data = nullptr, VkBufferUsageFlags flags = 0);
+    BufferHandle CreateBuffer(const CreateBufferParams& params);
     TextureHandle CreateTexture(const CreateTextureParams& params);
     PipelineHandle CreatePipeline();
     SamplerHandle CreateSampler(const char* name, VkFilter min_filter = VK_FILTER_NEAREST, VkFilter mag_filter = VK_FILTER_NEAREST, VkSamplerMipmapMode mip_filter = VK_SAMPLER_MIPMAP_MODE_NEAREST, VkSamplerAddressMode address_mode_u = VK_SAMPLER_ADDRESS_MODE_REPEAT, VkSamplerAddressMode address_mode_v = VK_SAMPLER_ADDRESS_MODE_REPEAT, VkSamplerAddressMode address_mode_w = VK_SAMPLER_ADDRESS_MODE_REPEAT);
     DescriptorSetLayoutHandle CreateDescriptorSetLayout();
     DescriptorSetHandle CreateDescriptorSet();
-    RenderPassHandle CreateRenderPass(CreateRenderPassParams params);
+    RenderPassHandle CreateRenderPass(const CreateRenderPassParams& params);
     ShaderStateHandle CreateShaderState();
 
     void SetResourceName(VkObjectType type, uint64 handle, const char* name);
@@ -100,6 +100,7 @@ private:
     void DestroyCommandBuffers();
 
     VkBool32 GetFamilyQueue(VkPhysicalDevice pDevice);
+    void GetVulkanBinariesPath(char* path, sizet size = 512);
 
 public:
 
@@ -163,6 +164,8 @@ public:
     BufferHandle dynamic_buffer;
 
     RenderPassOutput swapchain_output;
+
+    char vulkan_binaries_path[512];
     
     enum Flags : uint32
     {

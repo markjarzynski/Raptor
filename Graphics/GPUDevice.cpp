@@ -36,6 +36,8 @@ using HashMap = eastl::hash_map<Key, T>;
 template<typename Key, typename T>
 using Pair = eastl::pair<Key, T>;
 
+using EA::StdC::Snprintf;
+
 static const char* s_requested_layers[] = {
 #ifdef VULKAN_DEBUG
     "VK_LAYER_KHRONOS_validation",
@@ -90,17 +92,21 @@ GPUDevice::GPUDevice(Window& window, Allocator& allocator, uint32 flags, uint32 
     render_pass_cache.set_allocator(allocator);
 
     default_sampler = CreateSampler("Sampler Default", VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
-    fullscreen_vertex_buffer = CreateBuffer("Fullscreen Vertex Buffer", ResourceUsageType::Immutable, 0, nullptr, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    
+    CreateBufferParams fullscreen_buffer_params {};
+    fullscreen_buffer_params.name = "Fullscreen Vertex Buffer";
+    fullscreen_buffer_params.flags = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    fullscreen_vertex_buffer = CreateBuffer(fullscreen_buffer_params);
 
     // create depth texture
-    CreateTextureParams create_texture_params {};
-    create_texture_params.vk_format = VK_FORMAT_D32_SFLOAT;
-    create_texture_params.vk_image_type = VK_IMAGE_TYPE_2D;
-    create_texture_params.vk_image_view_type = VK_IMAGE_VIEW_TYPE_2D;
-    create_texture_params.width = window.width;
-    create_texture_params.height = window.height;
-    create_texture_params.name = "Depth Texture";
-    depth_texture = CreateTexture(create_texture_params);
+    CreateTextureParams depth_texture_params {};
+    depth_texture_params.vk_format = VK_FORMAT_D32_SFLOAT;
+    depth_texture_params.vk_image_type = VK_IMAGE_TYPE_2D;
+    depth_texture_params.vk_image_view_type = VK_IMAGE_VIEW_TYPE_2D;
+    depth_texture_params.width = window.width;
+    depth_texture_params.height = window.height;
+    depth_texture_params.name = "Depth Texture";
+    depth_texture = CreateTexture(depth_texture_params);
 
     // cache depth texture format
     swapchain_output.depth(VK_FORMAT_D32_SFLOAT);
@@ -112,6 +118,19 @@ GPUDevice::GPUDevice(Window& window, Allocator& allocator, uint32 flags, uint32 
     create_render_pass_params.stencil_operation = RenderPassOperation::Clear;
     create_render_pass_params.name = "Swapchain";
     swapchain_pass = CreateRenderPass(create_render_pass_params);
+
+    CreateTextureParams dummy_texture_params {};
+    dummy_texture_params.vk_format = VK_FORMAT_R8_UINT;
+    dummy_texture_params.name = "Dummy Texture";
+    dummy_texture = CreateTexture(dummy_texture_params);
+
+    CreateBufferParams dummy_constant_buffer_params {};
+    dummy_constant_buffer_params.size = 16;
+    dummy_constant_buffer_params.flags = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    dummy_constant_buffer_params.name = "Dummy Constant Buffer";
+    dummy_constant_buffer = CreateBuffer(dummy_constant_buffer_params);
+
+    GetVulkanBinariesPath(vulkan_binaries_path);
 
 }
 
@@ -622,7 +641,7 @@ void GPUDevice::DestroyCommandBuffers()
 }
 
 //------------------------------------------------------------------------------
-BufferHandle GPUDevice::CreateBuffer(const char* name, ResourceUsageType usage, uint32 size, void* data, VkBufferUsageFlags flags)
+BufferHandle GPUDevice::CreateBuffer(const CreateBufferParams& params)
 {
     BufferHandle handle = buffers.obtainResource();
     if (handle == InvalidBuffer)
@@ -630,18 +649,18 @@ BufferHandle GPUDevice::CreateBuffer(const char* name, ResourceUsageType usage, 
 
     Buffer* buffer = (Buffer*)buffers.accessResource(handle);
 
-    buffer->name = name;
-    buffer->size = size;
-    buffer->flags = flags;
-    buffer->usage = usage;
+    buffer->name = params.name;
+    buffer->size = params.size;
+    buffer->flags = params.flags;
+    buffer->usage = params.usage;
     buffer->handle = handle;
     buffer->global_offset = 0;
     buffer->parent_buffer = InvalidBuffer;
 
     static const VkBufferUsageFlags DYNAMIC_BUFFER_MASK = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-    const bool USE_GLOBAL_BUFFER = (flags & DYNAMIC_BUFFER_MASK) != 0;
+    const bool USE_GLOBAL_BUFFER = (params.flags & DYNAMIC_BUFFER_MASK) != 0;
 
-    if (usage == ResourceUsageType::Dynamic && USE_GLOBAL_BUFFER)
+    if (params.usage == ResourceUsageType::Dynamic && USE_GLOBAL_BUFFER)
     {
         buffer->parent_buffer = dynamic_buffer;
         return handle;
@@ -650,7 +669,7 @@ BufferHandle GPUDevice::CreateBuffer(const char* name, ResourceUsageType usage, 
     VkBufferCreateInfo buffer_info {};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-    buffer_info.size = (size > 0) ? size : 1;
+    buffer_info.size = (params.size > 0) ? params.size : 1;
     
     VmaAllocationCreateInfo alloc_create_info {};
     alloc_create_info.flags = VMA_ALLOCATION_CREATE_STRATEGY_BEST_FIT_BIT;
@@ -661,15 +680,15 @@ BufferHandle GPUDevice::CreateBuffer(const char* name, ResourceUsageType usage, 
     VkResult result = vmaCreateBuffer(vma_allocator, &buffer_info, &alloc_create_info, &buffer->vk_buffer, &buffer->vma_allocation, &alloc_info);
     ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to allocate buffer.");
 
-    SetResourceName(VK_OBJECT_TYPE_BUFFER, (uint64)buffer->vk_buffer, name);
+    SetResourceName(VK_OBJECT_TYPE_BUFFER, (uint64)buffer->vk_buffer, params.name);
 
     buffer->vk_device_memory = alloc_info.deviceMemory;
 
-    if (data)
+    if (params.data)
     {
         void* memory;
         vmaMapMemory(vma_allocator, buffer->vma_allocation, &memory);
-        memcpy(memory, data, (size_t)size);
+        memcpy(memory, params.data, (size_t)params.size);
         vmaUnmapMemory(vma_allocator, buffer->vma_allocation);
     }
 
@@ -1196,7 +1215,7 @@ static void CreateFramebuffer(GPUDevice& gpu_device, RenderPass* render_pass, co
 }
 
 //------------------------------------------------------------------------------
-RenderPassHandle GPUDevice::CreateRenderPass(CreateRenderPassParams params)
+RenderPassHandle GPUDevice::CreateRenderPass(const CreateRenderPassParams& params)
 {
     RenderPassHandle handle = render_passes.obtainResource();
     if (handle == InvalidRenderPass)
@@ -1227,23 +1246,25 @@ RenderPassHandle GPUDevice::CreateRenderPass(CreateRenderPassParams params)
 
     switch (params.type)
     {
-    case RenderPass::Type::Swapchain:
-    {
-        CreateSwapchainPass(*this, params, render_pass);
-    } break;
-    case RenderPass::Type::Geometry:
-    {
-        render_pass->output = CreateRenderPassOutput(*this, params);
-        render_pass->vk_render_pass = GetRenderPass(*this, render_pass->output, params.name);
+        case RenderPass::Type::Swapchain:
+        {
+            CreateSwapchainPass(*this, params, render_pass);
+        } break;
+        
+        case RenderPass::Type::Geometry:
+        {
+            render_pass->output = CreateRenderPassOutput(*this, params);
+            render_pass->vk_render_pass = GetRenderPass(*this, render_pass->output, params.name);
 
-        CreateFramebuffer(*this, render_pass, params.output_textures, params.num_render_targets, params.depth_stencil_texture);
-    } break;
-    case RenderPass::Type::Compute:
-    default:
-        break;
+            CreateFramebuffer(*this, render_pass, params.output_textures, params.num_render_targets, params.depth_stencil_texture);
+        } break;
+
+        case RenderPass::Type::Compute:
+        default:
+            break;
     }
 
-    return 0;
+    return handle;
 }
 //------------------------------------------------------------------------------
 ShaderStateHandle GPUDevice::CreateShaderState()
@@ -1335,6 +1356,18 @@ static void TransitionImageLayout(VkCommandBuffer command_buffer, VkImage vk_ima
     }
 
     vkCmdPipelineBarrier(command_buffer, src_stage, dst_stage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+}
+
+void GPUDevice::GetVulkanBinariesPath(char* path, sizet size)
+{
+#if defined(_MSC_VER)
+    char vulkan_env[512];
+    ExpandEnvironmentStringsA("%VULKAN_SDK%", vulkan_env, 512);
+    Snprintf(path, size, "%s\\Bin\\", vulkan_env);
+#else
+    char* vulkan_env = getenv("VULKAN_SDK");
+    Snprintf(path, size, "%s/bin/", vulkan_env);
+#endif
 }
 
 } // namespace Graphics
