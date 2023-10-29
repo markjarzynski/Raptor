@@ -33,6 +33,12 @@ struct CreateBufferParams
     const char* name;
 }; // struct CreateBufferParams
 
+struct MapBufferParams
+{
+    BufferHandle buffer;
+    uint32 offset = 0;
+    uint32 size = 0;
+}; // struct MapBufferParams
 
 } // namespace Graphics
 } // namespace Raptor

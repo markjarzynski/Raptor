@@ -102,6 +102,9 @@ private:
     VkBool32 GetFamilyQueue(VkPhysicalDevice pDevice);
     void GetVulkanBinariesPath(char* path, sizet size = 512);
 
+    void* MapBuffer(const MapBufferParams& params);
+    void UnmapBuffer(const MapBufferParams& params);
+
 public:
 
     VkInstance vk_instance;
@@ -162,6 +165,10 @@ public:
     TextureHandle depth_texture;
 
     BufferHandle dynamic_buffer;
+    uint8* dynamic_mapped_memory;
+    uint32 dynamic_allocated_size;
+    uint32 dynamic_per_frame_size;
+    uint32 dynamic_max_per_frame_size;
 
     RenderPassOutput swapchain_output;
 

@@ -132,11 +132,32 @@ GPUDevice::GPUDevice(Window& window, Allocator& allocator, uint32 flags, uint32 
 
     GetVulkanBinariesPath(vulkan_binaries_path);
 
+    dynamic_per_frame_size = 1024 * 1024 * 10;
+
+    CreateBufferParams dynamic_buffer_params {};
+    dynamic_buffer_params.size = dynamic_per_frame_size * MAX_FRAMES;
+    dynamic_buffer_params.flags = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+    dynamic_buffer_params.name = "Dynamic Persistent Buffer";
+    dynamic_buffer = CreateBuffer(dynamic_buffer_params);
+
+    MapBufferParams map_buffer_params {};
+    map_buffer_params.buffer = dynamic_buffer;
+    dynamic_mapped_memory = (uint8*)MapBuffer(map_buffer_params);
 }
 
 //------------------------------------------------------------------------------
 GPUDevice::~GPUDevice()
 {
+    vkDeviceWaitIdle(vk_device);
+    //delete command_buffer_ring;
+
+
+    MapBufferParams map_buffer_params {};
+    map_buffer_params.buffer = dynamic_buffer;
+    UnmapBuffer(map_buffer_params);
+
+    // TODO
+
     DestroyCommandBuffers();
     DestroyGPUTimestampManager();
     DestroySemaphores();
@@ -636,8 +657,8 @@ void GPUDevice::CreateCommandBuffers()
 //------------------------------------------------------------------------------
 void GPUDevice::DestroyCommandBuffers()
 {
-    allocator->deallocate(command_buffer_ring, sizeof(CommandBufferRing));
-    allocator->deallocate(queued_command_buffers, sizeof(CommandBuffer*) * 128);
+    allocator->deallocate(command_buffer_ring, sizeof(CommandBufferRing) + sizeof(CommandBuffer*) * 128);
+    //allocator->deallocate(queued_command_buffers, sizeof(CommandBuffer*) * 128);
 }
 
 //------------------------------------------------------------------------------
@@ -1266,10 +1287,42 @@ RenderPassHandle GPUDevice::CreateRenderPass(const CreateRenderPassParams& param
 
     return handle;
 }
+
 //------------------------------------------------------------------------------
 ShaderStateHandle GPUDevice::CreateShaderState()
 {
     return 0;
+}
+
+//------------------------------------------------------------------------------
+void* GPUDevice::MapBuffer(const MapBufferParams& params)
+{
+    if (params.buffer == InvalidBuffer)
+        return nullptr;
+
+    Buffer* buffer = (Buffer*)buffers.accessResource(params.buffer);
+
+    if (buffer->parent_buffer == dynamic_buffer)
+    {
+        buffer->global_offset = dynamic_allocated_size;
+        return nullptr; // TODO
+    }
+
+    void* data;
+    vmaMapMemory(vma_allocator, buffer->vma_allocation, &data);
+    return data;
+}
+
+void GPUDevice::UnmapBuffer(const MapBufferParams& params)
+{
+    if (params.buffer == InvalidBuffer)
+        return;
+    
+    Buffer* buffer = (Buffer*)buffers.accessResource(params.buffer);
+    if (buffer->parent_buffer == dynamic_buffer)
+        return;
+
+    vmaUnmapMemory(vma_allocator, buffer->vma_allocation);
 }
 
 //------------------------------------------------------------------------------
