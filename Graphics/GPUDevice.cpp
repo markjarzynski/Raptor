@@ -1167,7 +1167,32 @@ static VkRenderPass CreateRenderPass(GPUDevice& gpu_device, const RenderPassOutp
 
 static void CreateFramebuffer(GPUDevice& gpu_device, RenderPass* render_pass, const TextureHandle* output_textures, uint32 num_render_targets, TextureHandle depth_stencil_texture)
 {
-    // TODO
+    VkFramebufferCreateInfo framebuffer_info {};
+    framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    framebuffer_info.renderPass = render_pass->vk_render_pass;
+    framebuffer_info.width = render_pass->width;
+    framebuffer_info.height = render_pass->height;
+    framebuffer_info.layers = 1;
+
+    VkImageView framebuffer_attachments[MAX_IMAGE_OUTPUTS + 1] {};
+    uint32 active_attachments = 0;
+    for (; active_attachments < num_render_targets; active_attachments++)
+    {
+        Texture* texture = (Texture*)gpu_device.textures.accessResource(output_textures[active_attachments]);
+        framebuffer_attachments[active_attachments] = texture->vk_image_view;
+    }
+
+    if (depth_stencil_texture != InvalidTexture)
+    {
+        Texture* depth_texture = (Texture*)gpu_device.textures.accessResource(depth_stencil_texture);
+        framebuffer_attachments[active_attachments++] = depth_texture->vk_image_view;
+    }
+
+    framebuffer_info.pAttachments = framebuffer_attachments;
+    framebuffer_info.attachmentCount = active_attachments;
+
+    vkCreateFramebuffer(gpu_device.vk_device, &framebuffer_info, nullptr, &render_pass->vk_frame_buffer);
+    gpu_device.SetResourceName(VK_OBJECT_TYPE_FRAMEBUFFER, (uint64)render_pass->vk_frame_buffer, render_pass->name);
 }
 
 //------------------------------------------------------------------------------
