@@ -9,6 +9,7 @@ target_sources(${PROJECT_NAME}
 PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/Constants.h
     ${CMAKE_CURRENT_LIST_DIR}/Defines.h
+    ${CMAKE_CURRENT_LIST_DIR}/Hash.h
     ${CMAKE_CURRENT_LIST_DIR}/Service.h
     ${CMAKE_CURRENT_LIST_DIR}/Types.h
 )
@@ -16,4 +17,9 @@ PUBLIC
 target_include_directories(${PROJECT_NAME}
 PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}
+)
+
+target_link_libraries(${PROJECT_NAME}
+PUBLIC
+    wyhash
 )

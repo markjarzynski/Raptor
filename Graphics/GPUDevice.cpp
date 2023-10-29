@@ -21,6 +21,7 @@
 #include "Pipeline.h"
 #include "CommandBuffer.h"
 #include "CommandBufferRing.h"
+#include "Hash.h"
 
 namespace Raptor
 {
@@ -31,6 +32,9 @@ using eastl::clamp;
 
 template<typename Key, typename T>
 using HashMap = eastl::hash_map<Key, T>;
+
+template<typename Key, typename T>
+using Pair = eastl::pair<Key, T>;
 
 static const char* s_requested_layers[] = {
 #ifdef VULKAN_DEBUG
@@ -1016,15 +1020,14 @@ static RenderPassOutput CreateRenderPassOutput(GPUDevice& gpu_device, const Crea
 
 static VkRenderPass GetRenderPass(GPUDevice& gpu_device, const RenderPassOutput& output, const char* name)
 {
-    uint64 hash = 0; // TODO hash output
+    uint64 hash = Raptor::Core::HashBytes((void*)&output, sizeof(RenderPassOutput));
 
     VkRenderPass vk_render_pass = render_pass_cache.at(hash);
     if (vk_render_pass)
         return vk_render_pass;
 
     vk_render_pass = CreateRenderPass(gpu_device, output, name);
-    //eastl::hash_map<uint64, VkRenderPass>::value_type pair(hash, vk_render_pass);
-    HashMap<uint64, VkRenderPass>::value_type pair(hash, vk_render_pass);
+    Pair<uint64, VkRenderPass> pair(hash, vk_render_pass);
     render_pass_cache.insert(pair);
 
     return vk_render_pass;
@@ -1032,18 +1035,133 @@ static VkRenderPass GetRenderPass(GPUDevice& gpu_device, const RenderPassOutput&
 
 static VkRenderPass CreateRenderPass(GPUDevice& gpu_device, const RenderPassOutput& output, const char* name)
 {
-    // TODO
+    VkAttachmentDescription color_attachments[8] = {};
+    VkAttachmentReference color_attachments_ref[8] = {};
 
+    VkAttachmentLoadOp color_op, depth_op, stencil_op;
+    VkImageLayout color_initial, depth_initial;
+
+    switch(output.colorOperation)
+    {
+        case RenderPassOperation::Load:
+        {
+            color_op = VK_ATTACHMENT_LOAD_OP_LOAD;
+            color_initial = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        } break;
+        case RenderPassOperation::Clear:
+        {
+            color_op = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            color_initial = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        } break;
+        default:
+        {
+            color_op = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            color_initial = VK_IMAGE_LAYOUT_UNDEFINED;
+        }break;
+    }
+
+    switch(output.depthOperation)
+    {
+        case RenderPassOperation::Load:
+        {
+            depth_op = VK_ATTACHMENT_LOAD_OP_LOAD;
+            depth_initial = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        } break;
+        case RenderPassOperation::Clear:
+        {
+            depth_op = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            depth_initial = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        } break;
+        default:
+        {
+            depth_op = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            depth_initial = VK_IMAGE_LAYOUT_UNDEFINED;
+        } break;
+    }
+
+    switch(output.stencilOperation)
+    {
+        case RenderPassOperation::Load:
+        {
+            stencil_op = VK_ATTACHMENT_LOAD_OP_LOAD;
+        } break;
+        case RenderPassOperation::Clear:
+        {
+            stencil_op = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        } break;
+        default:
+        {
+            stencil_op = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        } break;
+    }
+
+    for (uint32 i = 0; i < output.numColorFormats; i++)
+    {
+        VkAttachmentDescription& color_attachment = color_attachments[i];
+        color_attachment.format = output.colorFormats[i];
+        color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+        color_attachment.loadOp = color_op;
+        color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        color_attachment.stencilLoadOp = stencil_op;
+        color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        color_attachment.initialLayout = color_initial;
+        color_attachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+        VkAttachmentReference& color_attachment_ref = color_attachments_ref[i];
+        color_attachment_ref.attachment = i;
+        color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    }
+
+    VkAttachmentDescription depth_attachment {};
+    VkAttachmentReference depth_attachment_ref {};
+
+    if (output.depthSteniclFormat != VK_FORMAT_UNDEFINED)
+    {
+        depth_attachment.format = output.depthSteniclFormat;
+        depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+        depth_attachment.loadOp = depth_op;
+        depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        depth_attachment.stencilLoadOp = stencil_op;
+        depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        depth_attachment.initialLayout = depth_initial;
+        depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+        depth_attachment_ref.attachment = output.numColorFormats;
+        depth_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    }
+
+    VkSubpassDescription subpass {};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+    VkAttachmentDescription attachments[MAX_IMAGE_OUTPUTS + 1] {};
+    uint32 active_attachments = 0;
+    for (; active_attachments < output.numColorFormats; active_attachments++)
+    {
+        attachments[active_attachments] = color_attachments[active_attachments];
+    }
+    subpass.colorAttachmentCount = (active_attachments) ? active_attachments - 1 : 0;
+    subpass.pColorAttachments = color_attachments_ref;
+    subpass.pDepthStencilAttachment = nullptr;
+
+    uint32 depth_stencil_count = 0;
+    if (output.depthSteniclFormat != VK_FORMAT_UNDEFINED)
+    {
+        attachments[subpass.colorAttachmentCount] = depth_attachment;
+        subpass.pDepthStencilAttachment = &depth_attachment_ref;
+        depth_stencil_count = 1;
+    }
 
     VkRenderPassCreateInfo render_pass_info {};
     render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    // render_pass_info.attachmentCount = ( active_attachments ? active_attachments - 1 : 0 ) + depth_stencil_count;
-    // render_pass_info.pAttachments = attachments;
-    // render_pass_info.subpassCount = 1;
-    // render_pass_info.pSubpasses = &subpass;
+    render_pass_info.attachmentCount = ( active_attachments ? active_attachments - 1 : 0 ) + depth_stencil_count;
+    render_pass_info.pAttachments = attachments;
+    render_pass_info.subpassCount = 1;
+    render_pass_info.pSubpasses = &subpass;
 
     VkRenderPass vk_render_pass;
-    // VKResult result = vkCreateRenderPass(gpu_device.vk_device, &render_pass_info, nullptr, &vk_render_pass);
+    VkResult result = vkCreateRenderPass(gpu_device.vk_device, &render_pass_info, nullptr, &vk_render_pass);
+    gpu_device.SetResourceName(VK_OBJECT_TYPE_RENDER_PASS, (uint64)vk_render_pass, name);
+
     return vk_render_pass;
 }
 
@@ -1087,15 +1205,14 @@ RenderPassHandle GPUDevice::CreateRenderPass(CreateRenderPassParams params)
     case RenderPass::Type::Swapchain:
     {
         CreateSwapchainPass(*this, params, render_pass);
-        break;
-    }
+    } break;
     case RenderPass::Type::Geometry:
     {
         render_pass->output = CreateRenderPassOutput(*this, params);
         render_pass->vk_render_pass = GetRenderPass(*this, render_pass->output, params.name);
 
         CreateFramebuffer(*this, render_pass, params.output_textures, params.num_render_targets, params.depth_stencil_texture);
-    }
+    } break;
     case RenderPass::Type::Compute:
     default:
         break;

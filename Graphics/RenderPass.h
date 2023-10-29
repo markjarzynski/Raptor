@@ -27,7 +27,7 @@ public:
     RenderPassOutput& depth(VkFormat format);
     RenderPassOutput& setOperations(RenderPassOperation color, RenderPassOperation depth, RenderPassOperation stencil);
 
-private:
+public:
 
     VkFormat colorFormats[MAX_IMAGE_OUTPUTS];
     VkFormat depthSteniclFormat;

@@ -10,3 +10,6 @@
 [submodule "Common/External/VulkanMemoryAllocator"]
 	path = Common/External/VulkanMemoryAllocator
 	url = git@github.com:GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+[submodule "Common/External/wyhash"]
+	path = Common/External/wyhash
+	url = git@github.com:wangyi-fudan/wyhash.git

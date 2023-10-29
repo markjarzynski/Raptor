@@ -24,6 +24,7 @@ find_package(GLFW REQUIRED)
 
 include(EASTL)
 include(ImGui)
+include(wyhash)
 
 add_executable(${PROJECT_NAME}
     main.cpp
@@ -47,6 +48,7 @@ PRIVATE
     "Vulkan::Vulkan"
     glfw
     imgui
+    wyhash
     "Raptor::Core"
     "Raptor::Debug"
     "Raptor::Graphics"
