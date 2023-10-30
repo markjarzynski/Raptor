@@ -8,7 +8,9 @@ PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/CommandBuffer.cpp
     ${CMAKE_CURRENT_LIST_DIR}/CommandBufferRing.cpp
     ${CMAKE_CURRENT_LIST_DIR}/GPUDevice.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/GPUProfiler.cpp
     ${CMAKE_CURRENT_LIST_DIR}/GPUTimestampManager.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/Renderer.cpp
     ${CMAKE_CURRENT_LIST_DIR}/RenderPass.cpp
     ${CMAKE_CURRENT_LIST_DIR}/ResourcePool.cpp
     ${CMAKE_CURRENT_LIST_DIR}/Window.cpp
@@ -19,7 +21,9 @@ PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/DescriptorSet.h
     ${CMAKE_CURRENT_LIST_DIR}/DescriptorSetLayout.h
     ${CMAKE_CURRENT_LIST_DIR}/GPUDevice.h
+    ${CMAKE_CURRENT_LIST_DIR}/GPUProfiler.h
     ${CMAKE_CURRENT_LIST_DIR}/GPUTimestampManager.h
+    ${CMAKE_CURRENT_LIST_DIR}/Renderer.h
     ${CMAKE_CURRENT_LIST_DIR}/RenderPass.h
     ${CMAKE_CURRENT_LIST_DIR}/ResourcePool.h
     ${CMAKE_CURRENT_LIST_DIR}/Resources.h

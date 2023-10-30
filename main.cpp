@@ -5,6 +5,9 @@
 #include "Raptor.h"
 #include "Window.h"
 #include "GPUDevice.h"
+#include "ResourceManager.h"
+#include "GPUProfiler.h"
+#include "Renderer.h"
 #include "DebugUI.h"
 
 // These new operators are required by EASTL
@@ -39,6 +42,10 @@ int main( int argc, char** argv)
 
     Raptor::Graphics::Window window {1920, 1080, "Raptor"};
     Raptor::Graphics::GPUDevice gpu_device {window, allocator};
+    Raptor::Core::ResourceManager resource_manager {allocator};
+    Raptor::Graphics::GPUProfiler gpu_profiler {allocator, 100};
+    Raptor::Graphics::Renderer renderer {&gpu_device, allocator};
+
     //Raptor::Debug::UI::DebugUI debugUI {window, vulkan};
 
     while (!window.ShouldClose())
