@@ -112,7 +112,7 @@ GPUDevice::GPUDevice(Window& window, Allocator& allocator, uint32 flags, uint32 
     swapchain_output.depth(VK_FORMAT_D32_SFLOAT);
 
     CreateRenderPassParams create_render_pass_params {};
-    create_render_pass_params.type = RenderPass::Type::Swapchain;
+    create_render_pass_params.type = RenderPassType::Swapchain;
     create_render_pass_params.color_operation = RenderPassOperation::Clear;
     create_render_pass_params.depth_operation = RenderPassOperation::Clear;
     create_render_pass_params.stencil_operation = RenderPassOperation::Clear;
@@ -149,7 +149,7 @@ GPUDevice::GPUDevice(Window& window, Allocator& allocator, uint32 flags, uint32 
 GPUDevice::~GPUDevice()
 {
     vkDeviceWaitIdle(vk_device);
-    //delete command_buffer_ring;
+    //command_buffer_ring;
 
 
     MapBufferParams map_buffer_params {};
@@ -1231,8 +1231,8 @@ static void CreateFramebuffer(GPUDevice& gpu_device, RenderPass* render_pass, co
     framebuffer_info.pAttachments = framebuffer_attachments;
     framebuffer_info.attachmentCount = active_attachments;
 
-    vkCreateFramebuffer(gpu_device.vk_device, &framebuffer_info, nullptr, &render_pass->vk_frame_buffer);
-    gpu_device.SetResourceName(VK_OBJECT_TYPE_FRAMEBUFFER, (uint64)render_pass->vk_frame_buffer, render_pass->name);
+    vkCreateFramebuffer(gpu_device.vk_device, &framebuffer_info, nullptr, &render_pass->vk_framebuffer);
+    gpu_device.SetResourceName(VK_OBJECT_TYPE_FRAMEBUFFER, (uint64)render_pass->vk_framebuffer, render_pass->name);
 }
 
 //------------------------------------------------------------------------------
@@ -1248,7 +1248,7 @@ RenderPassHandle GPUDevice::CreateRenderPass(const CreateRenderPassParams& param
     render_pass->dispatchY = 0;
     render_pass->dispatchZ = 0;
     render_pass->name = params.name;
-    render_pass->vk_frame_buffer = nullptr;
+    render_pass->vk_framebuffer = nullptr;
     render_pass->vk_render_pass = nullptr;
     render_pass->scaleX = params.scale_x;
     render_pass->scaleY = params.scale_y;
@@ -1267,12 +1267,12 @@ RenderPassHandle GPUDevice::CreateRenderPass(const CreateRenderPassParams& param
 
     switch (params.type)
     {
-        case RenderPass::Type::Swapchain:
+        case RenderPassType::Swapchain:
         {
             CreateSwapchainPass(*this, params, render_pass);
         } break;
         
-        case RenderPass::Type::Geometry:
+        case RenderPassType::Geometry:
         {
             render_pass->output = CreateRenderPassOutput(*this, params);
             render_pass->vk_render_pass = GetRenderPass(*this, render_pass->output, params.name);
@@ -1280,7 +1280,7 @@ RenderPassHandle GPUDevice::CreateRenderPass(const CreateRenderPassParams& param
             CreateFramebuffer(*this, render_pass, params.output_textures, params.num_render_targets, params.depth_stencil_texture);
         } break;
 
-        case RenderPass::Type::Compute:
+        case RenderPassType::Compute:
         default:
             break;
     }

@@ -40,6 +40,35 @@ static const uint32 MAX_RESOURCE_DELETIONS = 64;
 
 static const uint32 MAX_SWAPCHAIN_IMAGES = 3;
 
+
+struct Rect2D
+{
+    float x = 0.f;
+    float y = 0.f;
+    float width = 0.f;
+    float height = 0.f;
+}; // struct Rect2D
+
+struct Rect2DInt
+{
+    uint16 x = 0;
+    uint16 y = 0;
+    uint16 width = 0;
+    uint16 height = 0;
+}; // struct Rect2DInt
+
+struct Viewport 
+{
+    Rect2DInt rect;
+    float min_depth = 0.f;
+    float max_depth = 0.f;
+}; // struct Viewport
+
+enum class TopologyType
+{
+    Unknown, Point, Line, Triangle, Patch, Max
+};
+
 enum class ResourceUsageType
 {
     Immutable, Dynamic, Stream, Max
@@ -62,6 +91,38 @@ struct DescriptorSetUpdate
     DescriptorSetHandle handle;
     uint32 frame_issued = 0;
 }; // struct DescriptorSetUpdate
+
+
+enum PipelineStage 
+{
+    DrawIndirect, VertexInput, VertexShader, FragmentShader, RenderTarget, ComputeShader, Transfer, Max 
+};
+
+struct ImageBarrier
+{
+    TextureHandle texture;
+}; // struct ImageBarrier
+
+struct MemoryBarrier
+{
+    BufferHandle buffer;
+}; // struct MemoryBarrier
+
+struct ExecutionBarrier
+{
+    PipelineStage src_pipeline_stage = PipelineStage::DrawIndirect;
+    PipelineStage dst_pipeline_stage = PipelineStage::DrawIndirect;
+
+    uint32 new_barrier_experimental = UINT32_MAX;
+    uint32 load_operation = 0;
+
+    uint32 num_image_barriers = 0;
+    uint32 num_memory_barriers = 0;
+
+    ImageBarrier image_barriers[8];
+    MemoryBarrier memory_barriers[8];
+
+}; // struct ExecutionBarrier
 
 } // namespace Graphics
 } // namespace Raptor

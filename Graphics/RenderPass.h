@@ -39,24 +39,26 @@ public:
 
 }; // class RenderPassOutput
 
+
+enum class RenderPassType
+{
+    Geometry,
+    Swapchain,
+    Compute,
+    Max
+};
+
 struct RenderPass
 {
     VkRenderPass vk_render_pass;
-    VkFramebuffer vk_frame_buffer;
+    VkFramebuffer vk_framebuffer;
 
     RenderPassOutput output;
 
     TextureHandle outputTextures[MAX_IMAGE_OUTPUTS];
     TextureHandle outputDepth;
 
-    enum Type
-    {
-        Geometry,
-        Swapchain,
-        Compute,
-        Max
-    };
-    RenderPass::Type type;
+    RenderPassType type;
 
     float scaleX = 1.f;
     float scaleY = 1.f;
@@ -75,7 +77,7 @@ struct RenderPass
 struct CreateRenderPassParams
 {
     uint16 num_render_targets = 0;
-    RenderPass::Type type = RenderPass::Type::Geometry;
+    RenderPassType type = RenderPassType::Geometry;
 
     TextureHandle output_textures[MAX_IMAGE_OUTPUTS] = {InvalidTexture};
     TextureHandle depth_stencil_texture = InvalidTexture;

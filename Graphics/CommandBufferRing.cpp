@@ -37,7 +37,7 @@ CommandBufferRing::CommandBufferRing(GPUDevice* gpuDevice)
 
         command_buffers[i].gpu_device = gpu_device;
         command_buffers[i].handle = i;
-        command_buffers[i].reset();
+        command_buffers[i].Reset();
     }
 
 }
@@ -64,7 +64,7 @@ CommandBuffer* CommandBufferRing::GetCommandBuffer(uint32 frame, bool begin)
 
     if (begin)
     {
-        cb->reset();
+        cb->Reset();
 
         VkCommandBufferBeginInfo begin_info;
         begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
