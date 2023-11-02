@@ -68,6 +68,22 @@ static HashMap<uint64, VkRenderPass> render_pass_cache;
 GPUDevice::GPUDevice(Window& window, Allocator& allocator, uint32 flags, uint32 gpu_time_queries_per_frame)
     : window(&window), allocator(&allocator), m_uFlags(flags)
 {
+    resource_deleting_queue.set_allocator(allocator);
+    descriptor_set_updates.set_allocator(allocator);
+    render_pass_cache.set_allocator(allocator);
+
+    Init(gpu_time_queries_per_frame);
+}
+
+//------------------------------------------------------------------------------
+GPUDevice::~GPUDevice()
+{
+
+}
+
+//------------------------------------------------------------------------------
+void GPUDevice::Init(uint32 gpu_time_queries_per_frame)
+{
     CreateInstance();
     CreateDebugUtilsMessenger();
     CreateSurface();
@@ -87,10 +103,6 @@ GPUDevice::GPUDevice(Window& window, Allocator& allocator, uint32 flags, uint32 
     absolute_frame = 0;
     //m_uFlags &= ~Flags::TimestampsEnabled;
 
-    resource_deleting_queue.set_allocator(allocator);
-    descriptor_set_updates.set_allocator(allocator);
-    render_pass_cache.set_allocator(allocator);
-
     default_sampler = CreateSampler("Sampler Default", VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
     
     CreateBufferParams fullscreen_buffer_params {};
@@ -103,8 +115,8 @@ GPUDevice::GPUDevice(Window& window, Allocator& allocator, uint32 flags, uint32 
     depth_texture_params.vk_format = VK_FORMAT_D32_SFLOAT;
     depth_texture_params.vk_image_type = VK_IMAGE_TYPE_2D;
     depth_texture_params.vk_image_view_type = VK_IMAGE_VIEW_TYPE_2D;
-    depth_texture_params.width = window.width;
-    depth_texture_params.height = window.height;
+    depth_texture_params.width = window->width;
+    depth_texture_params.height = window->height;
     depth_texture_params.name = "Depth Texture";
     depth_texture = CreateTexture(depth_texture_params);
 
@@ -146,10 +158,24 @@ GPUDevice::GPUDevice(Window& window, Allocator& allocator, uint32 flags, uint32 
 }
 
 //------------------------------------------------------------------------------
-GPUDevice::~GPUDevice()
+void GPUDevice::Init(Window& window, Allocator& allocator, uint32 flags, uint32 gpu_time_queries_per_frame)
+{
+    this->window = &window;
+    this->allocator = &allocator;
+    this->m_uFlags = flags;
+
+    resource_deleting_queue.set_allocator(allocator);
+    descriptor_set_updates.set_allocator(allocator);
+    render_pass_cache.set_allocator(allocator);
+
+    Init(gpu_time_queries_per_frame);
+}
+
+//------------------------------------------------------------------------------
+void GPUDevice::Shutdown()
 {
     vkDeviceWaitIdle(vk_device);
-    //command_buffer_ring;
+    command_buffer_ring->Shutdown();
 
 
     MapBufferParams map_buffer_params {};
@@ -169,6 +195,7 @@ GPUDevice::~GPUDevice()
     DestroyDebugUtilsMessenger();
     DestroyInstance();
 }
+
 
 //------------------------------------------------------------------------------
 void GPUDevice::CreateInstance()

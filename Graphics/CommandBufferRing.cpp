@@ -9,6 +9,16 @@ namespace Graphics
 CommandBufferRing::CommandBufferRing(GPUDevice* gpuDevice)
     : gpu_device(gpuDevice)
 {
+    Init();
+}
+
+CommandBufferRing::~CommandBufferRing()
+{
+
+}
+
+void CommandBufferRing::Init()
+{
     VkResult result;
 
     for (uint32 i = 0; i < MAX_POOLS; i++)
@@ -39,10 +49,16 @@ CommandBufferRing::CommandBufferRing(GPUDevice* gpuDevice)
         command_buffers[i].handle = i;
         command_buffers[i].Reset();
     }
-
 }
 
-CommandBufferRing::~CommandBufferRing()
+void CommandBufferRing::Init(GPUDevice* gpuDevice)
+{
+    this->gpu_device = gpuDevice;
+
+    Init();
+}
+
+void CommandBufferRing::Shutdown()
 {
     for (uint32 i = 0; i < MAX_SWAPCHAIN_IMAGES * MAX_THREADS; i++)
     {

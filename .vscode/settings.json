@@ -32,6 +32,7 @@
         "typeindex": "cpp",
         "xlocale": "cpp",
         "random": "cpp",
-        "bitset": "cpp"
+        "bitset": "cpp",
+        "xiosbase": "cpp"
     }
 }

@@ -18,6 +18,14 @@ public:
     CommandBufferRing(GPUDevice* gpu_device);
     ~CommandBufferRing();
 
+private:
+    void Init();
+
+public:
+
+    void Init(GPUDevice* gpu_device);
+    void Shutdown();
+
     void ResetPools(uint32 frame_index);
     
     CommandBuffer* GetCommandBuffer(uint32 frame, bool begin);

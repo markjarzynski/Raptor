@@ -48,6 +48,15 @@ public:
     GPUDevice(const GPUDevice &) = delete;
     GPUDevice &operator=(const GPUDevice &) = delete;
 
+private:
+
+    void Init(uint32 gpu_time_queries_per_frame);
+
+public:
+
+    void Init(Window& window, Allocator& allocator, uint32 flags = 0, uint32 gpu_time_queries_per_frame = 32);
+    void Shutdown();
+
     BufferHandle CreateBuffer(const CreateBufferParams& params);
     TextureHandle CreateTexture(const CreateTextureParams& params);
     PipelineHandle CreatePipeline();
