@@ -1402,6 +1402,12 @@ CommandBuffer* GPUDevice::GetInstantCommandBuffer()
 }
 
 //------------------------------------------------------------------------------
+uint32 GPUDevice::GetGPUTimestamps(GPUTimestamp* out_timestamps)
+{
+    return gpu_timestamp_manager->resolve(previous_frame, out_timestamps);
+}
+
+//------------------------------------------------------------------------------
 static void TransitionImageLayout(VkCommandBuffer command_buffer, VkImage vk_image, VkFormat vk_format, VkImageLayout old_layout, VkImageLayout new_layout, bool isDepth)
 {
     VkImageMemoryBarrier barrier = {};

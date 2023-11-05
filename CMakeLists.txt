@@ -48,7 +48,6 @@ PRIVATE
     "Vulkan::Vulkan"
     glfw
     imgui
-    wyhash
     "Raptor::Core"
     "Raptor::Debug"
     "Raptor::Graphics"

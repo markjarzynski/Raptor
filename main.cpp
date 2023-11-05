@@ -42,7 +42,7 @@ int main( int argc, char** argv)
 
     Raptor::Graphics::Window window {1920, 1080, "Raptor"};
     Raptor::Graphics::GPUDevice gpu_device {window, allocator};
-    Raptor::Core::ResourceManager resource_manager {allocator};
+    Raptor::Core::ResourceManager resource_manager {allocator, nullptr};
     Raptor::Graphics::GPUProfiler gpu_profiler {allocator, 100};
     Raptor::Graphics::Renderer renderer {&gpu_device, allocator};
 

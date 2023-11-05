@@ -33,6 +33,17 @@
         "xlocale": "cpp",
         "random": "cpp",
         "bitset": "cpp",
-        "xiosbase": "cpp"
+        "xiosbase": "cpp",
+        "algorithm": "cpp",
+        "codecvt": "cpp",
+        "functional": "cpp",
+        "tuple": "cpp",
+        "utility": "cpp",
+        "xlocmon": "cpp",
+        "xloctime": "cpp",
+        "istream": "cpp",
+        "variant": "cpp",
+        "xlocmes": "cpp",
+        "xlocnum": "cpp"
     }
 }

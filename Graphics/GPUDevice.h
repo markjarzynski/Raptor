@@ -68,6 +68,7 @@ public:
 
     void SetResourceName(VkObjectType type, uint64 handle, const char* name);
     CommandBuffer* GetInstantCommandBuffer();
+    uint32 GetGPUTimestamps(GPUTimestamp* out_timestamps);
 
     Window* window;
     Allocator* allocator;
@@ -188,6 +189,7 @@ public:
         DebugUtilsExtensionExist        = 0x1 << 0,
         EnableGPUTimeQueries            = 0x1 << 1,
         TimestampsEnabled               = 0x1 << 2,
+        Resized                         = 0x1 << 3,
     };
     uint32 m_uFlags = 0u;
 
