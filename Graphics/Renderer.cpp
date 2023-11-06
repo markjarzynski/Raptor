@@ -14,11 +14,11 @@ uint64 TextureResource::type_hash = 0;
 uint64 BufferResource::type_hash = 0;
 uint64 SamplerResource::type_hash = 0;
 
-static BufferLoader g_buffer_loader;
-static SamplerLoader g_sampler_loader;
-static TextureLoader g_texture_loader;
+static BufferLoader s_buffer_loader;
+static SamplerLoader s_sampler_loader;
+static TextureLoader s_texture_loader;
 
-Renderer::Renderer(GPUDevice* gpu_device, Allocator& allocator)
+Renderer::Renderer(GPUDevice* gpu_device, ResourceManager* resource_manager, Allocator& allocator)
     : gpu_device(gpu_device), allocator(&allocator)
 {
     width = gpu_device->swapchain_width;
@@ -34,9 +34,11 @@ Renderer::Renderer(GPUDevice* gpu_device, Allocator& allocator)
     BufferResource::type_hash = Raptor::Core::HashString(BufferResource::type);
     SamplerResource::type_hash = Raptor::Core::HashString(SamplerResource::type);
 
-    g_texture_loader.renderer = this;
-    g_buffer_loader.renderer = this;
-    g_sampler_loader.renderer = this;
+    s_texture_loader.renderer = this;
+    s_buffer_loader.renderer = this;
+    s_sampler_loader.renderer = this;
+
+    SetLoaders(resource_manager);
 }
 
 Renderer::~Renderer()
@@ -62,9 +64,9 @@ void Renderer::Shutdown()
 
 void Renderer::SetLoaders(ResourceManager* manager)
 {
-    manager->SetLoader(TextureResource::type, &g_texture_loader);
-    manager->SetLoader(BufferResource::type, &g_buffer_loader);
-    manager->SetLoader(SamplerResource::type, &g_sampler_loader);
+    manager->SetLoader(TextureResource::type, &s_texture_loader);
+    manager->SetLoader(BufferResource::type, &s_buffer_loader);
+    manager->SetLoader(SamplerResource::type, &s_sampler_loader);
 }
 
 void Renderer::BeginFrame()
@@ -190,13 +192,14 @@ Resource* SamplerLoader::Unload(const char* name)
     return nullptr;
 }
 
-
-static Renderer g_renderer;
+/*
+static Renderer s_renderer;
 
 Renderer* Renderer::Instance()
 {
-    return &g_renderer;
+    return &s_renderer;
 }
+*/
 
 } // namespace Graphics
 } // namespace Raptor

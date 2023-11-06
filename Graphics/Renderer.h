@@ -28,8 +28,8 @@ class Renderer
 
 public:
 
-    Renderer(){}
-    Renderer(GPUDevice* gpu_device, Allocator& allocator);
+    //Renderer(){}
+    Renderer(GPUDevice* gpu_device, ResourceManager* resource_manager, Allocator& allocator);
     ~Renderer();
 
     void Init();
