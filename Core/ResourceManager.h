@@ -1,7 +1,7 @@
 #pragma once
 
-#include <EASTL/allocator.h>
-#include <EASTL/hash_map.h>
+#include "Allocator.h"
+#include "HashMap.h"
 #include "Types.h"
 #include "Debug.h"
 
@@ -9,14 +9,6 @@ namespace Raptor
 {
 namespace Core
 {
-
-using Allocator = eastl::allocator;
-
-template<typename Key, typename T>
-using HashMap = eastl::hash_map<Key,T>;
-
-template<typename Key, typename T>
-using Pair = eastl::pair<Key, T>;
 
 class ResourceManager;
 

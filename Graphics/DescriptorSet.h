@@ -14,7 +14,7 @@ struct DescriptorSet
 {
     VkDescriptorSet vk_descriptor_set;
 
-    ResourceHandle* resouces = nullptr;
+    ResourceHandle* resources = nullptr;
     SamplerHandle* samplers = nullptr;
     uint16* bindings = nullptr;
 
@@ -22,5 +22,11 @@ struct DescriptorSet
     uint32 num_resources = 0;
 
 }; // struct DescriptorSet
+
+struct DesciptorSetDescription
+{
+    ResourceData resources[MAX_DESCRIPTORS_PER_SET];
+    uint32 num_active_resources = 0;
+}; // struct DesciptorSetDescription
 } // namespace Graphics
 } // namespace Raptor

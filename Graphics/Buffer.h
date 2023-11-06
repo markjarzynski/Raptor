@@ -1,11 +1,17 @@
 #pragma once
 #include <vk_mem_alloc.h>
+#include "Types.h"
 #include "Resources.h"
+#include "ResourceManager.h"
 
 namespace Raptor
 {
 namespace Graphics
 {
+using Raptor::Core::Resource;
+
+class Renderer;
+
 struct Buffer
 {
     VkBuffer vk_buffer;
@@ -39,6 +45,27 @@ struct MapBufferParams
     uint32 offset = 0;
     uint32 size = 0;
 }; // struct MapBufferParams
+
+struct BufferDescription
+{
+    void* native_handle = nullptr;
+    const char* name = nullptr;
+
+    VkBufferUsageFlags type_flags = 0;
+    ResourceUsageType usage = ResourceUsageType::Immutable;
+    uint32 size = 0;
+    BufferHandle parent_handle;
+}; // struct BufferDescription
+
+struct BufferResource : public Resource
+{
+    BufferHandle handle;
+    uint32 pool_index;
+    BufferDescription desc;
+
+    static constexpr char* type = "BufferType";
+    static uint64 type_hash;
+}; // struct BufferResource
 
 } // namespace Graphics
 } // namespace Raptor

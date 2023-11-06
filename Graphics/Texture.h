@@ -4,11 +4,13 @@
 #include "Types.h"
 #include "Resources.h"
 #include "Sampler.h"
+#include "ResourceManager.h"
 
 namespace Raptor
 {
 namespace Graphics
 {
+using Raptor::Core::Resource;
 
 struct Texture
 {
@@ -64,6 +66,33 @@ struct CreateTextureParams
     const char* name = nullptr;
     void* data = nullptr;
 }; // struct CreateTextureParams
+
+struct TextureDescription
+{
+    void* native_handle = nullptr;
+    const char* name = nullptr;
+
+    uint16 width = 1;
+    uint16 height = 1;
+    uint16 depth = 1;
+    uint8 mipmaps = 1;
+    uint8 render_target = 0;
+    uint8 compute_access = 0;
+
+    VkFormat format = VK_FORMAT_UNDEFINED;
+    VkImageType vk_image_type = VK_IMAGE_TYPE_2D;
+    VkImageViewType vk_image_view_type = VK_IMAGE_VIEW_TYPE_2D;
+}; // struct TextureDescription
+
+struct TextureResource : public Resource
+{
+    TextureHandle handle;
+    uint32 pool_index;
+    TextureDescription desc;
+
+    static constexpr char* type = "TextureType";
+    static uint64 type_hash;
+}; // struct TextureResource
 
 namespace TextureFormat
 {

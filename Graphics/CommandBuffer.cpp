@@ -117,7 +117,7 @@ void CommandBuffer::BindDescriptorSet(DescriptorSetHandle* handles, uint32 num_l
             if (rb.vk_descriptor_type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
             {
                 const uint32 resource_index = descriptor_set->bindings[j];
-                ResourceHandle buffer_handle = descriptor_set->resouces[resource_index];
+                ResourceHandle buffer_handle = descriptor_set->resources[resource_index];
                 Buffer* buffer = (Buffer*)gpu_device->buffers.accessResource(buffer_handle);
 
                 offset_cache[num_offsets++] = buffer->global_offset;

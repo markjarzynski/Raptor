@@ -19,5 +19,11 @@ struct ShaderState
     bool graphics_pipeline = false;
 
 }; // struct ShaderState
+
+struct ShaderStateDescription
+{
+    void* native_handle = nullptr;
+    const char* name = nullptr;
+}; // struct ShaderStateDescription
 } // namespace Graphics
 } // namespace Raptor

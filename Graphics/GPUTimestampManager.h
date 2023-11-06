@@ -35,8 +35,6 @@ public:
     uint32 push(uint32 currentFrame, const char* name);
     uint32 pop(uint32 currentFrame);
 
-private:
-
     Allocator* allocator = nullptr;
     GPUTimestamp* timestamps = nullptr;
     uint64* timestampsData = nullptr;

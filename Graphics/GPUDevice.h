@@ -11,18 +11,24 @@
 #include <EASTL/allocator.h>
 #include <EASTL/vector.h>
 
-#include "Service.h"
-#include "Window.h"
-#include "Debug.h"
-#include "Log.h"
-#include "Types.h"
-#include "GPUTimestampManager.h"
 #include "Buffer.h"
-#include "Texture.h"
-#include "Sampler.h"
+#include "Debug.h"
+#include "DescriptorSet.h"
+#include "DescriptorSetLayout.h"
+#include "GPUTimestampManager.h"
+#include "Log.h"
+#include "Pipeline.h"
 #include "RenderPass.h"
 #include "ResourcePool.h"
 #include "Resources.h"
+#include "Sampler.h"
+#include "ShaderState.h"
+#include "Texture.h"
+#include "Types.h"
+#include "Window.h"
+
+
+
 
 #define VULKAN_DEBUG
 
@@ -30,6 +36,10 @@ namespace Raptor
 {
 namespace Graphics
 {
+enum class QueueType
+{
+    Graphics, Compute, CopyTransfer, Max
+};
 
 class CommandBuffer;
 
@@ -57,18 +67,79 @@ public:
     void Init(Window& window, Allocator& allocator, uint32 flags = 0, uint32 gpu_time_queries_per_frame = 32);
     void Shutdown();
 
+    // Create Resources
     BufferHandle CreateBuffer(const CreateBufferParams& params);
     TextureHandle CreateTexture(const CreateTextureParams& params);
     PipelineHandle CreatePipeline();
-    SamplerHandle CreateSampler(const char* name, VkFilter min_filter = VK_FILTER_NEAREST, VkFilter mag_filter = VK_FILTER_NEAREST, VkSamplerMipmapMode mip_filter = VK_SAMPLER_MIPMAP_MODE_NEAREST, VkSamplerAddressMode address_mode_u = VK_SAMPLER_ADDRESS_MODE_REPEAT, VkSamplerAddressMode address_mode_v = VK_SAMPLER_ADDRESS_MODE_REPEAT, VkSamplerAddressMode address_mode_w = VK_SAMPLER_ADDRESS_MODE_REPEAT);
+    SamplerHandle CreateSampler(const CreateSamplerParams& params);
     DescriptorSetLayoutHandle CreateDescriptorSetLayout();
     DescriptorSetHandle CreateDescriptorSet();
     RenderPassHandle CreateRenderPass(const CreateRenderPassParams& params);
     ShaderStateHandle CreateShaderState();
 
-    void SetResourceName(VkObjectType type, uint64 handle, const char* name);
+    // Destroy Resources
+    void DestroyBuffer(BufferHandle buffer);
+    void DestroyTexture(TextureHandle texture);
+    void DestroyPipeline(PipelineHandle pipeline);
+    void DestroySampler(SamplerHandle sampler);
+    void DestroyDescriptorSetLayout(DescriptorSetLayoutHandle layout);
+    void DestroyDescriptorSet(DescriptorSetHandle set);
+    void DestroyRenderPass(RenderPassHandle render_pass);
+    void DestroyShaderState(ShaderStateHandle shader);
+
+    // Query Description
+    void QueryBuffer(BufferHandle buffer, BufferDescription& out_description);
+    void QueryTexture(TextureHandle texture, TextureDescription& out_description);
+    void QueryPipeline(PipelineHandle pipeline, PipelineDescription& out_description);
+    void QuerySampler(SamplerHandle sampler, SamplerDescription& out_description);
+    void QueryDescriptorSetLayout(DescriptorSetLayoutHandle layout, DescriptorSetLayoutDescription& out_description);
+    void QueryDescriptorSet(DescriptorSetHandle set, DesciptorSetDescription& out_description);
+    void QueryShaderState(ShaderStateHandle shader, ShaderStateDescription& out_description);
+
+    const RenderPassOutput& GetRenderPassOutput(RenderPassHandle render_pass) const;
+
+    // Swapchain
+    void ResizeSwapchain();
+
+    // Command Buffers
+    void QueueCommandBuffer(CommandBuffer* command_buffer);
+    CommandBuffer* GetCommandBuffer(QueueType type, bool begin);
     CommandBuffer* GetInstantCommandBuffer();
+
+    // Rendering
+    void NewFrame();
+    void Present();
+    void Resize(uint16 width, uint16 height);
+
+    void FillBarrier(RenderPassHandle render_pass, ExecutionBarrier& out_barrier);
+
+    BufferHandle GetFullscreenVertexBuffer() const;
+    RenderPassHandle GetSwapchainPass() const;
+    TextureHandle GetDummyTexture() const;
+    BufferHandle GetDummyConstantBuffer() const;
+    const RenderPassOutput& GetSwapchainOutput() const { return swapchain_output; }
+    VkRenderPass GetVkRenderPass(const RenderPassOutput& output, const char* name);
+
+    // Markers
+    void SetResourceName(VkObjectType type, uint64 handle, const char* name);
+    void PushMarker(VkCommandBuffer command_buffer, const char* name);
+    void PopMarker(VkCommandBuffer command_buffer);
+
+    // GPU Timings
     uint32 GetGPUTimestamps(GPUTimestamp* out_timestamps);
+
+    // Destroy Instant
+    void DestroyBufferInstant(ResourceHandle buffer);
+    void DestroyTextureInstant(ResourceHandle texture);
+    void DestroyPipelineInstant(ResourceHandle pipeline);
+    void DestroySamplerInstant(ResourceHandle sampler);
+    void DestroyDescriptorSetLayoutInstant(ResourceHandle layout);
+    void DestroyDescriptorSetInstant(ResourceHandle set);
+    void DestroyRenderPassInstant(ResourceHandle render_pass);
+    void DestroyShaderStateInstant(ResourceHandle shader);
+
+    // Update Instant
+    void UpdateDescriptorSetInstant(DescriptorSetUpdate* update);
 
     Window* window;
     Allocator* allocator;
@@ -91,8 +162,8 @@ private:
     void SetSurfaceFormat();
     bool SetPresentMode(VkPresentModeKHR requested_present_mode = VK_PRESENT_MODE_FIFO_KHR);
 
-    void CreateSwapChain();
-    void DestroySwapChain();
+    void CreateSwapchain();
+    void DestroySwapchain();
 
     void CreateVmaAllocator();
     void DestroyVmaAllocator();
@@ -145,7 +216,10 @@ public:
     VkFence vk_command_buffer_executed_fence[MAX_SWAPCHAIN_IMAGES];
     static const uint32 QUERIES_PER_FRAME = 32;
     GPUTimestampManager* gpu_timestamp_manager = nullptr;
+    
     CommandBuffer** queued_command_buffers = nullptr;
+    uint32 num_allocated_command_buffers = 0;
+    uint32 num_queued_command_buffers = 0;
 
     ResourcePool buffers;
     ResourcePool textures;
@@ -190,16 +264,19 @@ public:
         EnableGPUTimeQueries            = 0x1 << 1,
         TimestampsEnabled               = 0x1 << 2,
         Resized                         = 0x1 << 3,
+        GPUTimestampReset               = 0x1 << 4,
     };
     uint32 m_uFlags = 0u;
 
 }; // class GPUDevice
 
 static void CreateTexture(GPUDevice& gpu_device, const CreateTextureParams& params, TextureHandle handle, Texture* texture);
+static void ResizeTexture(GPUDevice& gpu_device, Texture* texture, Texture* delete_texture, uint16 width, uint16 height, uint16 depth);
 static void CreateSwapchainPass(GPUDevice& gpu_device, const CreateRenderPassParams params, RenderPass* render_pass);
 static RenderPassOutput CreateRenderPassOutput(GPUDevice& gpu_device, const CreateRenderPassParams params);
 static VkRenderPass GetRenderPass(GPUDevice& gpu_device, const RenderPassOutput& output, const char* name);
 static VkRenderPass CreateRenderPass(GPUDevice& gpu_device, const RenderPassOutput& output, const char* name);
+static void FillWriteDescriptorSets(GPUDevice& gpu_device, const DescriptorSetLayout* descriptor_set_layout, VkDescriptorSet vk_descriptor_set, VkWriteDescriptorSet* descriptor_write, VkDescriptorBufferInfo* buffer_info, VkDescriptorImageInfo* image_info, VkSampler vk_default_sampler, uint32& num_resources, const ResourceHandle* resources, const SamplerHandle* samplers, const uint16* bindings);
 
 #ifdef VULKAN_DEBUG
 static VkBool32 DebugUtilsCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT types, const VkDebugUtilsMessengerCallbackDataEXT* callback_data, void* user_data);

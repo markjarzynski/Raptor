@@ -21,5 +21,12 @@ struct DescriptorSetLayout
     DescriptorSetLayoutHandle handle;
 
 }; // struct DescriptorSet
+
+struct DescriptorSetLayoutDescription
+{
+    ResourceBinding bindings[MAX_DESCRIPTORS_PER_SET];
+    uint32 num_active_bindings = 0;
+}; // struct DescriptorSetLayoutDescription
+
 } // namespace Graphics
 } // namespace Raptor

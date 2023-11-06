@@ -124,5 +124,20 @@ struct ExecutionBarrier
 
 }; // struct ExecutionBarrier
 
+struct ResourceData
+{
+    void* data = nullptr;
+}; // struct ResourceData
+
+struct ResourceBinding 
+{
+    uint16 type = 0;
+    uint16 start = 0;
+    uint16 count = 0;
+    uint16 set = 0;
+
+    const char* name = nullptr;
+}; // struct ResourceBinding
+
 } // namespace Graphics
 } // namespace Raptor

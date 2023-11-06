@@ -9,9 +9,11 @@ target_sources(${PROJECT_NAME}
 PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/ResourceManager.cpp
 PUBLIC
+    ${CMAKE_CURRENT_LIST_DIR}/Allocator.h
     ${CMAKE_CURRENT_LIST_DIR}/Constants.h
     ${CMAKE_CURRENT_LIST_DIR}/Defines.h
     ${CMAKE_CURRENT_LIST_DIR}/Hash.h
+    ${CMAKE_CURRENT_LIST_DIR}/HashMap.h
     ${CMAKE_CURRENT_LIST_DIR}/ResourceManager.h
     ${CMAKE_CURRENT_LIST_DIR}/Service.h
     ${CMAKE_CURRENT_LIST_DIR}/Types.h

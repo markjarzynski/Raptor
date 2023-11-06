@@ -31,5 +31,10 @@ struct Pipeline
     bool graphics_pipeline = true;
 
 }; // struct Pipeline
+
+struct PipelineDescription
+{
+    ShaderStateHandle shader;
+}; // struct PipelineDescription
 } // namespace Graphics
 } // namespace Raptor

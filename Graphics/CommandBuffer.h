@@ -10,10 +10,6 @@ namespace Raptor
 {
 namespace Graphics
 {
-enum class QueueType
-{
-    Graphics, Compute, CopyTransfer, Max
-};
 
 enum CommandBufferFlags : uint32
 {

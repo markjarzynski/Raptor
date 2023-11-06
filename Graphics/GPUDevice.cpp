@@ -12,6 +12,7 @@
 #include <EASTL/algorithm.h>
 #include <EASTL/hash_map.h>
 
+#include "Defines.h"
 #include "GPUDevice.h"
 #include "Raptor.h"
 #include "Defines.h"
@@ -90,7 +91,7 @@ void GPUDevice::Init(uint32 gpu_time_queries_per_frame)
     CreatePhysicalDevices();
     SetSurfaceFormat();
     SetPresentMode();
-    CreateSwapChain();
+    CreateSwapchain();
     CreateVmaAllocator();
     CreatePools(gpu_time_queries_per_frame);
     CreateSemaphores();
@@ -103,7 +104,15 @@ void GPUDevice::Init(uint32 gpu_time_queries_per_frame)
     absolute_frame = 0;
     //m_uFlags &= ~Flags::TimestampsEnabled;
 
-    default_sampler = CreateSampler("Sampler Default", VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+    CreateSamplerParams sampler_params {};
+    sampler_params.name = "Sampler Default";
+    sampler_params.min_filter = VK_FILTER_LINEAR;
+    sampler_params.mag_filter = VK_FILTER_LINEAR;
+    sampler_params.mip_filter = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    sampler_params.address_mode_u = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    sampler_params.address_mode_v = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    sampler_params.address_mode_w = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    default_sampler = CreateSampler(sampler_params);
     
     CreateBufferParams fullscreen_buffer_params {};
     fullscreen_buffer_params.name = "Fullscreen Vertex Buffer";
@@ -189,7 +198,7 @@ void GPUDevice::Shutdown()
     DestroySemaphores();
     DestroyPools();
     DestroyVmaAllocator();
-    DestroySwapChain();
+    DestroySwapchain();
     DestroyPhysicalDevices();
     DestroySurface();
     DestroyDebugUtilsMessenger();
@@ -459,7 +468,7 @@ bool GPUDevice::SetPresentMode(VkPresentModeKHR requestedPresentMode)
 }
 
 //------------------------------------------------------------------------------
-void GPUDevice::CreateSwapChain()
+void GPUDevice::CreateSwapchain()
 {
     VkResult result;
     VkBool32 surfaceSupported;
@@ -526,7 +535,7 @@ void GPUDevice::CreateSwapChain()
 }
 
 //------------------------------------------------------------------------------
-void GPUDevice::DestroySwapChain()
+void GPUDevice::DestroySwapchain()
 {
     for (uint32 iImage = 0; iImage < swapchain_image_count; iImage++)
     {
@@ -907,7 +916,7 @@ PipelineHandle GPUDevice::CreatePipeline()
     return 0;
 }
 //------------------------------------------------------------------------------
-SamplerHandle GPUDevice::CreateSampler(const char* name, VkFilter min_filter, VkFilter mag_filter, VkSamplerMipmapMode mip_filter, VkSamplerAddressMode address_mode_u, VkSamplerAddressMode address_mode_v, VkSamplerAddressMode address_mode_w)
+SamplerHandle GPUDevice::CreateSampler(const CreateSamplerParams& params)
 {
     SamplerHandle handle = samplers.obtainResource();
     if (handle == InvalidSampler)
@@ -915,31 +924,31 @@ SamplerHandle GPUDevice::CreateSampler(const char* name, VkFilter min_filter, Vk
 
     Sampler* sampler = (Sampler*)samplers.accessResource(handle);
 
-    sampler->name = name;
+    sampler->name = params.name;
 
-    sampler->min_filter = min_filter;
-    sampler->mag_filter = mag_filter;
-    sampler->mip_filter = mip_filter;
+    sampler->min_filter = params.min_filter;
+    sampler->mag_filter = params.mag_filter;
+    sampler->mip_filter = params.mip_filter;
 
-    sampler->address_mode_u = address_mode_u;
-    sampler->address_mode_v = address_mode_v;
-    sampler->address_mode_w = address_mode_w;
+    sampler->address_mode_u = params.address_mode_u;
+    sampler->address_mode_v = params.address_mode_v;
+    sampler->address_mode_w = params.address_mode_w;
 
     VkSamplerCreateInfo create_info {};
     create_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    create_info.addressModeU = address_mode_u;
-    create_info.addressModeV = address_mode_v;
-    create_info.addressModeW = address_mode_w;
-    create_info.minFilter = min_filter;
-    create_info.magFilter = mag_filter;
-    create_info.mipmapMode = mip_filter;
+    create_info.addressModeU = sampler->address_mode_u;
+    create_info.addressModeV = sampler->address_mode_v;
+    create_info.addressModeW = sampler->address_mode_w;
+    create_info.minFilter = sampler->min_filter;
+    create_info.magFilter = sampler->mag_filter;
+    create_info.mipmapMode = sampler->mip_filter;
     create_info.anisotropyEnable = 0;
     create_info.compareEnable = 0;
     create_info.unnormalizedCoordinates = 0;
     create_info.borderColor = VkBorderColor::VK_BORDER_COLOR_INT_OPAQUE_WHITE;
     
     vkCreateSampler(vk_device, &create_info, vk_allocation_callbacks, &sampler->vk_sampler);
-    SetResourceName(VK_OBJECT_TYPE_SAMPLER, (uint64)sampler->vk_sampler, name);
+    SetResourceName(VK_OBJECT_TYPE_SAMPLER, (uint64)sampler->vk_sampler, sampler->name);
 
     return handle;
 }
@@ -949,6 +958,123 @@ DescriptorSetLayoutHandle GPUDevice::CreateDescriptorSetLayout()
 {
     return 0;
 }
+
+static void FillWriteDescriptorSets(GPUDevice& gpu_device, const DescriptorSetLayout* descriptor_set_layout,
+    VkDescriptorSet vk_descriptor_set, VkWriteDescriptorSet* descriptor_write, VkDescriptorBufferInfo* buffer_info,
+    VkDescriptorImageInfo* image_info, VkSampler vk_default_sampler, uint32& num_resources,
+    const ResourceHandle* resources, const SamplerHandle* samplers, const uint16* bindings)
+{
+    for (uint32 i = 0; i < num_resources; i++)
+    {
+        uint32 layout_binding_index = bindings[i];
+
+        const DescriptorBinding& binding = descriptor_set_layout->bindings[layout_binding_index];
+
+        descriptor_write[i] = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        descriptor_write[i].dstSet = vk_descriptor_set;
+        const uint32 binding_point = binding.start;
+        descriptor_write[i].dstBinding = binding_point;
+        descriptor_write[i].dstArrayElement = 0;
+        descriptor_write[i].descriptorCount = 1;
+
+        switch (binding.vk_descriptor_type)
+        {
+            case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+            {
+                descriptor_write[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+
+                TextureHandle texture_handle = resources[i];
+                Texture* texture_data = (Texture*)gpu_device.textures.accessResource(texture_handle);
+
+                image_info[i].sampler = vk_default_sampler;
+                if (texture_data->sampler)
+                    image_info[i].sampler = texture_data->sampler->vk_sampler;
+                
+                if (samplers[i] != InvalidSampler)
+                {
+                    Sampler* sampler = (Sampler*)gpu_device.samplers.accessResource(samplers[i]);
+                }
+
+                image_info[i].imageLayout = TextureFormat::HasDepthOrStencil(texture_data->vk_format) ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                image_info[i].imageView = texture_data->vk_image_view;
+
+                descriptor_write[i].pImageInfo = &image_info[i];
+
+            } break;
+
+            case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+            {
+                descriptor_write[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+
+                TextureHandle texture_handle = resources[i];
+                Texture* texture_data = (Texture*)gpu_device.textures.accessResource(texture_handle);
+
+                image_info[i].sampler = nullptr;
+                image_info[i].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+                image_info[i].imageView = texture_data->vk_image_view;
+
+                descriptor_write[i].pImageInfo = &image_info[i];
+
+            } break;
+
+            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+            {
+                BufferHandle buffer_handle = resources[i];
+                Buffer* buffer = (Buffer*)gpu_device.buffers.accessResource(buffer_handle);
+
+                descriptor_write[i].descriptorType = (buffer->usage == ResourceUsageType::Dynamic) ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+                if (buffer->parent_buffer != InvalidBuffer)
+                {
+                    Buffer* parent_buffer = (Buffer*)gpu_device.buffers.accessResource(buffer->parent_buffer);
+
+                    buffer_info[i].buffer = parent_buffer->vk_buffer;
+                }
+                else
+                {
+                    buffer_info[i].buffer = buffer->vk_buffer;
+                }
+
+                buffer_info[i].offset = 0;
+                buffer_info[i].range = buffer->size;
+
+                descriptor_write[i].pBufferInfo = &buffer_info[i];
+
+            } break;
+
+            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+            {
+                BufferHandle buffer_handle = resources[i];
+                Buffer* buffer = (Buffer*)gpu_device.buffers.accessResource(buffer_handle);
+
+                descriptor_write[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+                if (buffer->parent_buffer != InvalidBuffer)
+                {
+                    Buffer* parent_buffer = (Buffer*)gpu_device.buffers.accessResource(buffer->parent_buffer);
+                    
+                    buffer_info[i].buffer = parent_buffer->vk_buffer;
+                }
+                else
+                {
+                    buffer_info[i].buffer = buffer->vk_buffer;
+                }
+
+                buffer_info[i].offset = 0;
+                buffer_info[i].range = buffer->size;
+
+                descriptor_write[i].pBufferInfo = &buffer_info[i];
+
+            } break;
+
+            default:
+            {
+                ASSERT_MESSAGE(false, "[Vulkan] Error: Resource type %d not supported in descriptor set creation.\n", binding.vk_descriptor_type);
+            }
+        }
+    }
+}
+
 //------------------------------------------------------------------------------
 DescriptorSetHandle GPUDevice::CreateDescriptorSet()
 {
@@ -1322,6 +1448,144 @@ ShaderStateHandle GPUDevice::CreateShaderState()
 }
 
 //------------------------------------------------------------------------------
+void GPUDevice::DestroyBuffer(BufferHandle buffer)
+{
+    if (buffer < buffers.poolSize)
+        resource_deleting_queue.push_back({ResourceDeletionType::Buffer, buffer, current_frame});
+    else
+        Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid Buffer %u\n", buffer);
+}
+
+//------------------------------------------------------------------------------
+void GPUDevice::DestroyTexture(TextureHandle texture)
+{
+    if (texture < textures.poolSize)
+        resource_deleting_queue.push_back({ResourceDeletionType::Texture, texture, current_frame});
+    else
+        Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid Texture %u\n", texture);
+}
+
+//------------------------------------------------------------------------------
+void GPUDevice::DestroyPipeline(PipelineHandle pipeline)
+{
+    if (pipeline < pipelines.poolSize)
+    {
+        resource_deleting_queue.push_back({ResourceDeletionType::Pipeline, pipeline, current_frame});
+        Pipeline* v_pipeline = (Pipeline*)pipelines.accessResource(pipeline);
+        DestroyShaderState(v_pipeline->shader_state);
+    }
+    else
+    {
+        Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid Pipeline %u\n", pipeline);
+    }
+}
+
+//------------------------------------------------------------------------------
+void GPUDevice::DestroySampler(SamplerHandle sampler)
+{
+    if (sampler < samplers.poolSize)
+        resource_deleting_queue.push_back({ResourceDeletionType::Sampler, sampler, current_frame});
+    else
+        Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid Sampler %u\n", sampler);
+}
+
+//------------------------------------------------------------------------------
+void GPUDevice::DestroyDescriptorSetLayout(DescriptorSetLayoutHandle layout)
+{
+    if (layout < descriptor_set_layouts.poolSize)
+        resource_deleting_queue.push_back({ResourceDeletionType::DescriptorSetLayout, layout, current_frame});
+    else
+        Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid DescriptorSetLayout %u\n", layout);
+}
+
+//------------------------------------------------------------------------------
+void GPUDevice::DestroyDescriptorSet(DescriptorSetHandle set)
+{
+    if (set < descriptor_sets.poolSize)
+        resource_deleting_queue.push_back({ResourceDeletionType::DescriptorSet, set, current_frame});
+    else
+        Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid DescriptorSet %u\n", set);
+}
+
+//------------------------------------------------------------------------------
+void GPUDevice::DestroyRenderPass(RenderPassHandle render_pass)
+{
+    if (render_pass < render_passes.poolSize)
+        resource_deleting_queue.push_back({ResourceDeletionType::RenderPass, render_pass, current_frame});
+    else
+        Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid RenderPass %u\n", render_pass);
+}
+
+//------------------------------------------------------------------------------
+void GPUDevice::DestroyShaderState(ShaderStateHandle shader)
+{
+    if (shader < shaders.poolSize)
+        resource_deleting_queue.push_back({ResourceDeletionType::ShaderState, shader, current_frame});
+    else
+        Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid ShaderState %u\n", shader);
+}
+
+//------------------------------------------------------------------------------
+static void ResizeTexture(GPUDevice& gpu_device, Texture* texture, Texture* delete_texture, uint16 width, uint16 height, uint16 depth)
+{
+    delete_texture->vk_image_view = texture->vk_image_view;
+    delete_texture->vk_image = texture->vk_image;
+    delete_texture->vma_allocation = texture->vma_allocation;
+
+    CreateTextureParams params;
+    params.mipmaps = texture->mipmaps;
+    params.flags = texture->flags;
+    params.vk_format = texture->vk_format;
+    params.vk_image_type = texture->vk_image_type;
+    params.vk_image_view_type = texture->vk_image_view_type;
+    params.name = texture->name;
+    params.width = texture->width;
+    params.height = texture->height;
+    params.depth = texture->depth;
+
+    CreateTexture(gpu_device, params, texture->handle, texture);
+}
+
+//------------------------------------------------------------------------------
+void GPUDevice::ResizeSwapchain()
+{
+    vkDeviceWaitIdle(vk_device);
+
+    VkSurfaceCapabilitiesKHR surface_capabilities;
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vk_physical_device, vk_surface, &surface_capabilities);
+    VkExtent2D swapchain_extent = surface_capabilities.currentExtent;
+
+    if (swapchain_extent.width == 0 || swapchain_extent.height == 0)
+    {
+        return;
+    }
+
+    RenderPass* vk_swapchain_pass = (RenderPass*)render_passes.accessResource(swapchain_pass);
+    vkDestroyRenderPass(vk_device, vk_swapchain_pass->vk_render_pass, vk_allocation_callbacks);
+
+    DestroySwapchain();
+    DestroySurface();
+
+    CreateSurface();
+    CreateSwapchain();
+
+    TextureHandle delete_texture = textures.obtainResource();
+    Texture* vk_delete_texture = (Texture*)textures.accessResource(delete_texture);
+    vk_delete_texture->handle = delete_texture;
+    Texture* vk_depth_texture = (Texture*)textures.accessResource(depth_texture);
+    ResizeTexture(*this, vk_depth_texture, vk_delete_texture, swapchain_width, swapchain_height, 1);
+
+    DestroyTexture(delete_texture);
+
+    CreateRenderPassParams swapchain_pass_params {};
+    swapchain_pass_params.type = RenderPassType::Swapchain;
+    swapchain_pass_params.name = "Swapchain";
+    CreateSwapchainPass(*this, swapchain_pass_params, vk_swapchain_pass);
+
+    vkDeviceWaitIdle(vk_device);
+}
+
+//------------------------------------------------------------------------------
 void* GPUDevice::MapBuffer(const MapBufferParams& params)
 {
     if (params.buffer == InvalidBuffer)
@@ -1394,6 +1658,28 @@ void GPUDevice::SetResourceName(VkObjectType type, uint64 handle, const char* na
     pfnSetDebugUtilsObjectNameEXT(vk_device, &name_info);
 }
 
+
+
+//------------------------------------------------------------------------------
+void GPUDevice::QueueCommandBuffer(CommandBuffer* command_buffer)
+{
+    queued_command_buffers[num_queued_command_buffers++] = command_buffer;
+}
+
+//------------------------------------------------------------------------------
+CommandBuffer* GPUDevice::GetCommandBuffer(QueueType type, bool begin)
+{
+    CommandBuffer* command_buffer = command_buffer_ring->GetCommandBuffer(current_frame, begin);
+
+    if ((m_uFlags & Flags::GPUTimestampReset) && begin)
+    {
+        vkCmdResetQueryPool(command_buffer->vk_command_buffer, vk_query_pool, current_frame * gpu_timestamp_manager->queriesPerFrame * 2, gpu_timestamp_manager->queriesPerFrame);
+        m_uFlags &= ~Flags::GPUTimestampReset;
+    }
+
+    return command_buffer;
+}
+
 //------------------------------------------------------------------------------
 CommandBuffer* GPUDevice::GetInstantCommandBuffer()
 {
@@ -1402,10 +1688,102 @@ CommandBuffer* GPUDevice::GetInstantCommandBuffer()
 }
 
 //------------------------------------------------------------------------------
+void GPUDevice::NewFrame()
+{
+    VkFence* render_complete_fence = &vk_command_buffer_executed_fence[current_frame];
+
+    if (vkGetFenceStatus(vk_device, *render_complete_fence) != VK_SUCCESS)
+    {
+        vkWaitForFences(vk_device, 1, render_complete_fence, VK_TRUE, UINT64_MAX);
+    }
+
+    vkResetFences(vk_device, 1, render_complete_fence);
+
+    VkResult result = vkAcquireNextImageKHR(vk_device, vk_swapchain, UINT64_MAX, vk_image_acquired_semaphore, VK_NULL_HANDLE, &image_index );
+    if (result == VK_ERROR_OUT_OF_DATE_KHR)
+        ResizeSwapchain();
+    
+    command_buffer_ring->ResetPools(current_frame);
+    const uint32 used_size = dynamic_allocated_size - (dynamic_per_frame_size * previous_frame);
+    dynamic_max_per_frame_size = MAX(used_size, dynamic_max_per_frame_size);
+    dynamic_allocated_size = dynamic_per_frame_size * current_frame;
+
+    if (descriptor_set_updates.size())
+    {
+        for (auto it = descriptor_set_updates.begin(); it != descriptor_set_updates.end(); it++)
+        {
+            UpdateDescriptorSetInstant(it);
+            it->frame_issued = UINT32_MAX;
+            descriptor_set_updates.erase(it);
+        }
+    }
+
+}
+
+//------------------------------------------------------------------------------
 uint32 GPUDevice::GetGPUTimestamps(GPUTimestamp* out_timestamps)
 {
     return gpu_timestamp_manager->resolve(previous_frame, out_timestamps);
 }
+
+//------------------------------------------------------------------------------
+void GPUDevice::DestroyBufferInstant(ResourceHandle buffer){}
+//------------------------------------------------------------------------------
+void GPUDevice::DestroyTextureInstant(ResourceHandle texture){}
+//------------------------------------------------------------------------------
+void GPUDevice::DestroyPipelineInstant(ResourceHandle pipeline){}
+//------------------------------------------------------------------------------
+void GPUDevice::DestroySamplerInstant(ResourceHandle sampler){}
+//------------------------------------------------------------------------------
+void GPUDevice::DestroyDescriptorSetLayoutInstant(ResourceHandle layout){}
+//------------------------------------------------------------------------------
+void GPUDevice::DestroyDescriptorSetInstant(ResourceHandle set){}
+//------------------------------------------------------------------------------
+void GPUDevice::DestroyRenderPassInstant(ResourceHandle render_pass){}
+//------------------------------------------------------------------------------
+void GPUDevice::DestroyShaderStateInstant(ResourceHandle shader){}
+
+//------------------------------------------------------------------------------
+void GPUDevice::UpdateDescriptorSetInstant(DescriptorSetUpdate* update)
+{
+    DescriptorSetHandle dummy_delete_descriptor_set_handle = descriptor_sets.obtainResource();
+    DescriptorSet* dummy_delete_descriptor_set = (DescriptorSet*)descriptor_sets.accessResource(dummy_delete_descriptor_set_handle);
+
+    DescriptorSet* descriptor_set = (DescriptorSet*)descriptor_sets.accessResource(update->handle);
+    const DescriptorSetLayout* descriptor_set_layout = descriptor_set->layout;
+
+    dummy_delete_descriptor_set->vk_descriptor_set = descriptor_set->vk_descriptor_set;
+    dummy_delete_descriptor_set->bindings = nullptr;
+    dummy_delete_descriptor_set->resources = nullptr;
+    dummy_delete_descriptor_set->samplers = nullptr;
+    dummy_delete_descriptor_set->num_resources = 0;
+
+    DestroyDescriptorSet(dummy_delete_descriptor_set_handle);
+
+    VkWriteDescriptorSet descriptor_write[8];
+    VkDescriptorBufferInfo buffer_info[8];
+    VkDescriptorImageInfo image_info[8];
+
+    Sampler* sampler = (Sampler*)samplers.accessResource(default_sampler);
+
+    VkDescriptorSetAllocateInfo alloc_info {};
+    alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    alloc_info.descriptorPool = vk_descriptor_pool;
+    alloc_info.descriptorSetCount = 1;
+    alloc_info.pSetLayouts = &descriptor_set->layout->vk_descriptor_set_layout;
+    vkAllocateDescriptorSets(vk_device, &alloc_info, &descriptor_set->vk_descriptor_set);
+
+    uint32 num_resources = descriptor_set_layout->num_bindings;
+    FillWriteDescriptorSets(*this, descriptor_set_layout, descriptor_set->vk_descriptor_set, descriptor_write, buffer_info, image_info, sampler->vk_sampler, num_resources, descriptor_set->resources, descriptor_set->samplers, descriptor_set->bindings);
+    
+    vkUpdateDescriptorSets(vk_device, num_resources, descriptor_write, 0, nullptr);
+}
+
+
+
+
+
+
 
 //------------------------------------------------------------------------------
 static void TransitionImageLayout(VkCommandBuffer command_buffer, VkImage vk_image, VkFormat vk_format, VkImageLayout old_layout, VkImageLayout new_layout, bool isDepth)
