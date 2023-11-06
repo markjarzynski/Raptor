@@ -1,5 +1,8 @@
+#include <stb_image.h>
+
 #include "Renderer.h"
 #include "Hash.h"
+#include "Log.h"
 
 namespace Raptor
 {
@@ -9,6 +12,7 @@ namespace Graphics
 using Raptor::Core::Allocator;
 using Raptor::Core::Resource;
 using Raptor::Core::HashString;
+using Raptor::Core::Pair;
 
 uint64 TextureResource::type_hash = 0;
 uint64 BufferResource::type_hash = 0;
@@ -101,11 +105,49 @@ TextureResource* Renderer::CreateTexture(const CreateTextureParams& params)
 
 TextureResource* Renderer::CreateTexture(const char* name, const char* filename)
 {
+    TextureResource* texture = textures.obtain();
+
+    if (texture)
+    {
+        TextureHandle handle = CreateTextureFromFile(*gpu_device, filename, name);
+        texture->handle = handle; 
+        gpu_device->QueryTexture(handle, texture->desc);
+        texture->references = 1;
+        texture->name = name;
+
+        uint64 hash = HashString(name);
+        Pair<uint64, TextureResource*> pair = {hash, texture};
+        resource_cache.textures.insert(pair);
+
+        return texture;
+    }
+
     return nullptr;
 }
 
 SamplerResource* Renderer::CreateSampler(const CreateSamplerParams& params)
 {
+    SamplerResource* sampler = samplers.obtain();
+    
+    if (sampler)
+    {
+        SamplerHandle handle = gpu_device->CreateSampler(params);
+        sampler->handle = handle;
+        sampler->name = params.name;
+        gpu_device->QuerySampler(handle, sampler->desc);
+
+        if (params.name != nullptr)
+        {
+            uint64 hash = HashString(params.name);
+            Pair<uint64, SamplerResource*> pair = {hash, sampler};
+            resource_cache.samplers.insert(pair);
+        }
+
+        sampler->references = 1;
+
+        return sampler;
+    }
+
     return nullptr;
 }
 
@@ -200,6 +242,40 @@ Renderer* Renderer::Instance()
     return &s_renderer;
 }
 */
+
+static TextureHandle CreateTextureFromFile(GPUDevice& gpu_device, const char* filename, const char* name)
+{
+    if (filename)
+    {
+        int comp, width, height;
+        uint8* image_data = stbi_load(filename, &width, &height, &comp, 4);
+        if (!image_data)
+        {
+            Raptor::Debug::Log("[Vulkan] Error: Could not load texture %s\n", filename);
+            return InvalidTexture;
+        }
+
+        CreateTextureParams params;
+        params.data = image_data;
+        params.vk_format = VK_FORMAT_R8G8B8A8_UNORM;
+        // params.vk_image_type = VK_IMAGE_TYPE_2D;
+        // params.vk_image_view_type = VK_IMAGE_VIEW_TYPE_2D;
+        // params.mipmaps = 1;
+        // params.flags = 0;
+        params.width = (uint16)width;
+        params.height = (uint16)height;
+        // params.depth = 1;
+        params.name = name;
+        TextureHandle new_texture = gpu_device.CreateTexture(params);
+
+        free(image_data);
+
+        return new_texture;
+
+    }
+
+    return InvalidTexture;
+}
 
 } // namespace Graphics
 } // namespace Raptor

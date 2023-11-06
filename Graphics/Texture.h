@@ -79,7 +79,7 @@ struct TextureDescription
     uint8 render_target = 0;
     uint8 compute_access = 0;
 
-    VkFormat format = VK_FORMAT_UNDEFINED;
+    VkFormat vk_format = VK_FORMAT_UNDEFINED;
     VkImageType vk_image_type = VK_IMAGE_TYPE_2D;
     VkImageViewType vk_image_view_type = VK_IMAGE_VIEW_TYPE_2D;
 }; // struct TextureDescription

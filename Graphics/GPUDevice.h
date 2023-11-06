@@ -78,25 +78,25 @@ public:
     ShaderStateHandle CreateShaderState();
 
     // Destroy Resources
-    void DestroyBuffer(BufferHandle buffer);
-    void DestroyTexture(TextureHandle texture);
-    void DestroyPipeline(PipelineHandle pipeline);
-    void DestroySampler(SamplerHandle sampler);
-    void DestroyDescriptorSetLayout(DescriptorSetLayoutHandle layout);
-    void DestroyDescriptorSet(DescriptorSetHandle set);
-    void DestroyRenderPass(RenderPassHandle render_pass);
-    void DestroyShaderState(ShaderStateHandle shader);
+    void DestroyBuffer(BufferHandle handle);
+    void DestroyTexture(TextureHandle handle);
+    void DestroyPipeline(PipelineHandle handle);
+    void DestroySampler(SamplerHandle handle);
+    void DestroyDescriptorSetLayout(DescriptorSetLayoutHandle handle);
+    void DestroyDescriptorSet(DescriptorSetHandle handle);
+    void DestroyRenderPass(RenderPassHandle handle);
+    void DestroyShaderState(ShaderStateHandle handle);
 
     // Query Description
-    void QueryBuffer(BufferHandle buffer, BufferDescription& out_description);
-    void QueryTexture(TextureHandle texture, TextureDescription& out_description);
-    void QueryPipeline(PipelineHandle pipeline, PipelineDescription& out_description);
-    void QuerySampler(SamplerHandle sampler, SamplerDescription& out_description);
-    void QueryDescriptorSetLayout(DescriptorSetLayoutHandle layout, DescriptorSetLayoutDescription& out_description);
-    void QueryDescriptorSet(DescriptorSetHandle set, DesciptorSetDescription& out_description);
-    void QueryShaderState(ShaderStateHandle shader, ShaderStateDescription& out_description);
+    void QueryBuffer(BufferHandle handle, BufferDescription& out_description);
+    void QueryTexture(TextureHandle handle, TextureDescription& out_description);
+    void QueryPipeline(PipelineHandle handle, PipelineDescription& out_description);
+    void QuerySampler(SamplerHandle handle, SamplerDescription& out_description);
+    void QueryDescriptorSetLayout(DescriptorSetLayoutHandle handle, DescriptorSetLayoutDescription& out_description);
+    void QueryDescriptorSet(DescriptorSetHandle handle, DesciptorSetDescription& out_description);
+    void QueryShaderState(ShaderStateHandle handle, ShaderStateDescription& out_description);
 
-    const RenderPassOutput& GetRenderPassOutput(RenderPassHandle render_pass) const;
+    const RenderPassOutput& GetRenderPassOutput(RenderPassHandle handle) const;
 
     // Swapchain
     void ResizeSwapchain();

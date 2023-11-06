@@ -51,6 +51,7 @@ PRIVATE
     EAStdC
     "Vulkan::Vulkan"
     glfw
+    tinygltf
     "imgui"
     "Raptor::Core"
     "Raptor::Debug"

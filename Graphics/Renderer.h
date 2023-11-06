@@ -113,5 +113,7 @@ struct SamplerLoader : public ResourceLoader
 }; // struct SamplerLoader
 
 
+static TextureHandle CreateTextureFromFile(GPUDevice& gpu_device, const char* filename, const char* name);
+
 } // namespace Graphics
 } // namespace Raptor

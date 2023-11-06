@@ -71,7 +71,7 @@ template<typename T>
 inline T* ResourcePoolTyped<T>::obtain()
 {
     uint32 resource_index = ResourcePool::obtainResource();
-    if (resource_index != uint32_max)
+    if (resource_index != INVALID_INDEX)
     {
         T* resource = get(resource_index);
         resource->pool_index = resource_index;

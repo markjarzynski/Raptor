@@ -26,6 +26,8 @@ include(EASTL)
 include(ImGui)
 include(wyhash)
 
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/Common/External/tinygltf)
+
 add_executable(${PROJECT_NAME}
     main.cpp
 )
@@ -48,6 +50,7 @@ PRIVATE
     "Vulkan::Vulkan"
     glfw
     imgui
+    tinygltf
     "Raptor::Core"
     "Raptor::Debug"
     "Raptor::Graphics"

@@ -13,3 +13,6 @@
 [submodule "Common/External/wyhash"]
 	path = Common/External/wyhash
 	url = git@github.com:wangyi-fudan/wyhash.git
+[submodule "Common/External/tinygltf"]
+	path = Common/External/tinygltf
+	url = git@github.com:syoyo/tinygltf.git

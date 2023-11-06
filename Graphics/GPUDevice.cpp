@@ -1448,81 +1448,134 @@ ShaderStateHandle GPUDevice::CreateShaderState()
 }
 
 //------------------------------------------------------------------------------
-void GPUDevice::DestroyBuffer(BufferHandle buffer)
+void GPUDevice::DestroyBuffer(BufferHandle handle)
 {
-    if (buffer < buffers.poolSize)
-        resource_deleting_queue.push_back({ResourceDeletionType::Buffer, buffer, current_frame});
+    if (handle < buffers.poolSize)
+        resource_deleting_queue.push_back({ResourceDeletionType::Buffer, handle, current_frame});
     else
-        Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid Buffer %u\n", buffer);
+        Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid Buffer %u\n", handle);
 }
 
 //------------------------------------------------------------------------------
-void GPUDevice::DestroyTexture(TextureHandle texture)
+void GPUDevice::DestroyTexture(TextureHandle handle)
 {
-    if (texture < textures.poolSize)
-        resource_deleting_queue.push_back({ResourceDeletionType::Texture, texture, current_frame});
+    if (handle < textures.poolSize)
+        resource_deleting_queue.push_back({ResourceDeletionType::Texture, handle, current_frame});
     else
-        Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid Texture %u\n", texture);
+        Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid Texture %u\n", handle);
 }
 
 //------------------------------------------------------------------------------
-void GPUDevice::DestroyPipeline(PipelineHandle pipeline)
+void GPUDevice::DestroyPipeline(PipelineHandle handle)
 {
-    if (pipeline < pipelines.poolSize)
+    if (handle < pipelines.poolSize)
     {
-        resource_deleting_queue.push_back({ResourceDeletionType::Pipeline, pipeline, current_frame});
-        Pipeline* v_pipeline = (Pipeline*)pipelines.accessResource(pipeline);
-        DestroyShaderState(v_pipeline->shader_state);
+        resource_deleting_queue.push_back({ResourceDeletionType::Pipeline, handle, current_frame});
+        Pipeline* pipeline = (Pipeline*)pipelines.accessResource(handle);
+        DestroyShaderState(pipeline->shader_state);
     }
     else
     {
-        Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid Pipeline %u\n", pipeline);
+        Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid Pipeline %u\n", handle);
     }
 }
 
 //------------------------------------------------------------------------------
-void GPUDevice::DestroySampler(SamplerHandle sampler)
+void GPUDevice::DestroySampler(SamplerHandle handle)
 {
-    if (sampler < samplers.poolSize)
-        resource_deleting_queue.push_back({ResourceDeletionType::Sampler, sampler, current_frame});
+    if (handle < samplers.poolSize)
+        resource_deleting_queue.push_back({ResourceDeletionType::Sampler, handle, current_frame});
     else
-        Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid Sampler %u\n", sampler);
+        Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid Sampler %u\n", handle);
 }
 
 //------------------------------------------------------------------------------
-void GPUDevice::DestroyDescriptorSetLayout(DescriptorSetLayoutHandle layout)
+void GPUDevice::DestroyDescriptorSetLayout(DescriptorSetLayoutHandle handle)
 {
-    if (layout < descriptor_set_layouts.poolSize)
-        resource_deleting_queue.push_back({ResourceDeletionType::DescriptorSetLayout, layout, current_frame});
+    if (handle < descriptor_set_layouts.poolSize)
+        resource_deleting_queue.push_back({ResourceDeletionType::DescriptorSetLayout, handle, current_frame});
     else
-        Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid DescriptorSetLayout %u\n", layout);
+        Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid DescriptorSetLayout %u\n", handle);
 }
 
 //------------------------------------------------------------------------------
-void GPUDevice::DestroyDescriptorSet(DescriptorSetHandle set)
+void GPUDevice::DestroyDescriptorSet(DescriptorSetHandle handle)
 {
-    if (set < descriptor_sets.poolSize)
-        resource_deleting_queue.push_back({ResourceDeletionType::DescriptorSet, set, current_frame});
+    if (handle < descriptor_sets.poolSize)
+        resource_deleting_queue.push_back({ResourceDeletionType::DescriptorSet, handle, current_frame});
     else
-        Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid DescriptorSet %u\n", set);
+        Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid DescriptorSet %u\n", handle);
 }
 
 //------------------------------------------------------------------------------
-void GPUDevice::DestroyRenderPass(RenderPassHandle render_pass)
+void GPUDevice::DestroyRenderPass(RenderPassHandle handle)
 {
-    if (render_pass < render_passes.poolSize)
-        resource_deleting_queue.push_back({ResourceDeletionType::RenderPass, render_pass, current_frame});
+    if (handle < render_passes.poolSize)
+        resource_deleting_queue.push_back({ResourceDeletionType::RenderPass, handle, current_frame});
     else
-        Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid RenderPass %u\n", render_pass);
+        Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid RenderPass %u\n", handle);
 }
 
 //------------------------------------------------------------------------------
-void GPUDevice::DestroyShaderState(ShaderStateHandle shader)
+void GPUDevice::DestroyShaderState(ShaderStateHandle handle)
 {
-    if (shader < shaders.poolSize)
-        resource_deleting_queue.push_back({ResourceDeletionType::ShaderState, shader, current_frame});
+    if (handle < shaders.poolSize)
+        resource_deleting_queue.push_back({ResourceDeletionType::ShaderState, handle, current_frame});
     else
-        Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid ShaderState %u\n", shader);
+        Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid ShaderState %u\n", handle);
+}
+
+//------------------------------------------------------------------------------
+void GPUDevice::QueryBuffer(BufferHandle handle, BufferDescription& out_description){}
+//------------------------------------------------------------------------------
+void GPUDevice::QueryTexture(TextureHandle handle, TextureDescription& out_description)
+{
+    if (handle == InvalidTexture)
+        return;
+
+    const Texture* texture = (Texture*)textures.accessResource(handle);
+    out_description.width = texture->width;
+    out_description.height = texture->height;
+    out_description.depth = texture->depth;
+    out_description.mipmaps = texture->mipmaps;
+    out_description.vk_format = texture->vk_format;
+    out_description.vk_image_type = texture->vk_image_type;
+    out_description.vk_image_view_type = texture->vk_image_view_type;
+    out_description.render_target = (texture->flags & Texture::Flags::RenderTarget) == Texture::Flags::RenderTarget;
+    out_description.compute_access = (texture->flags & Texture::Flags::Compute) == Texture::Flags::Compute;
+    out_description.native_handle = (void*)&texture->vk_image;
+    out_description.name = texture->name;
+}
+//------------------------------------------------------------------------------
+void GPUDevice::QueryPipeline(PipelineHandle handle, PipelineDescription& out_description){}
+
+//------------------------------------------------------------------------------
+void GPUDevice::QuerySampler(SamplerHandle handle, SamplerDescription& out_description)
+{
+    if (handle == InvalidSampler)
+        return;
+
+    const Sampler* sampler = (Sampler*)samplers.accessResource(handle);
+    out_description.address_mode_u = sampler->address_mode_u;
+    out_description.address_mode_v = sampler->address_mode_v;
+    out_description.address_mode_w = sampler->address_mode_w;
+    out_description.min_filter = sampler->min_filter;
+    out_description.mag_filter = sampler->mag_filter;
+    out_description.mip_filter = sampler->mip_filter;
+    out_description.name = sampler->name;
+}
+
+//------------------------------------------------------------------------------
+void GPUDevice::QueryDescriptorSetLayout(DescriptorSetLayoutHandle handle, DescriptorSetLayoutDescription& out_description){}
+//------------------------------------------------------------------------------
+void GPUDevice::QueryDescriptorSet(DescriptorSetHandle handle, DesciptorSetDescription& out_description){}
+//------------------------------------------------------------------------------
+void GPUDevice::QueryShaderState(ShaderStateHandle handle, ShaderStateDescription& out_description){}
+//------------------------------------------------------------------------------
+const RenderPassOutput& GPUDevice::GetRenderPassOutput(RenderPassHandle handle) const
+{
+    const RenderPass* render_pass = (RenderPass*)render_passes.accessResource(handle);
+    return render_pass->output;
 }
 
 //------------------------------------------------------------------------------
