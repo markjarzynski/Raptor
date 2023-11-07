@@ -725,7 +725,7 @@ BufferHandle GPUDevice::CreateBuffer(const CreateBufferParams& params)
 
     VkBufferCreateInfo buffer_info {};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | params.flags;
     buffer_info.size = (params.size > 0) ? params.size : 1;
     
     VmaAllocationCreateInfo alloc_create_info {};
@@ -743,9 +743,9 @@ BufferHandle GPUDevice::CreateBuffer(const CreateBufferParams& params)
 
     if (params.data)
     {
-        void* memory;
-        vmaMapMemory(vma_allocator, buffer->vma_allocation, &memory);
-        memcpy(memory, params.data, (size_t)params.size);
+        void* data;
+        vmaMapMemory(vma_allocator, buffer->vma_allocation, &data);
+        memcpy(data, params.data, (size_t)params.size);
         vmaUnmapMemory(vma_allocator, buffer->vma_allocation);
     }
 

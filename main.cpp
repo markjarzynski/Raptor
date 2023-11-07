@@ -41,6 +41,27 @@ void debug_print_versions()
     EA::StdC::Printf("Vulkan version: %d.%d.%d\n", VK_VERSION_MAJOR(instanceVersion), VK_VERSION_MINOR(instanceVersion), VK_VERSION_PATCH(instanceVersion));
 }
 
+static uint8* GetBufferData(std::vector<tinygltf::BufferView> buffer_views, uint32 buffer_index, eastl::vector<void*> buffers_data, uint32* buffer_size = nullptr, char** buffer_name = nullptr)
+{
+    tinygltf::BufferView& buffer = buffer_views[buffer_index];
+
+    uint32 offset = buffer.byteOffset;
+
+    if (buffer_name != nullptr)
+    {
+        *buffer_name = buffer.name.data();
+    }
+
+    if (buffer_size != nullptr)
+    {
+        *buffer_size = buffer.byteLength;
+    }
+
+    uint8* data = (uint8*)buffers_data[buffer.buffer] + offset;
+
+    return data;
+}
+
 int main( int argc, char** argv)
 {
     debug_print_versions();
@@ -63,15 +84,16 @@ int main( int argc, char** argv)
     Raptor::Graphics::Renderer renderer {&gpu_device, &resource_manager, allocator};
     //Raptor::Debug::UI::DebugUI debugUI {window, gpu_device};
 
-    //Directory cwd{};
+    char cwd[Raptor::Core::MAX_FILENAME_LENGTH];
+    Raptor::Core::CurrentDirectory(cwd);
 
-    char base_path[512]{};
+    char base_path[Raptor::Core::MAX_FILENAME_LENGTH];
     memcpy(base_path, argv[1], strlen(argv[1]));
     Raptor::Core::DirectoryFromPath(base_path);
 
     Raptor::Core::ChangeDirectory(base_path);
 
-    char gltf_file[512]{};
+    char gltf_file[Raptor::Core::MAX_FILENAME_LENGTH];
     memcpy(gltf_file, argv[1], strlen(argv[1]));
     Raptor::Core::FilenameFromPath(gltf_file);
 
@@ -110,6 +132,42 @@ int main( int argc, char** argv)
 
         samplers[i] = *sr;
     }
+
+    eastl::vector<void*> buffers_data(model.buffers.size(), allocator);
+    for (uint32 i = 0; i < model.buffers.size(); i++)
+    {
+        tinygltf::Buffer& buffer = model.buffers[i];
+
+        Raptor::Core::FileReadResult buffer_data = Raptor::Core::FileReadBinary(buffer.uri.data(), &allocator);
+        buffers_data[i] = buffer_data.data;
+    }
+
+    eastl::vector<Raptor::Graphics::BufferResource> buffers(model.bufferViews.size(), allocator);
+    for (uint32 i = 0; i < model.bufferViews.size(); i++)
+    {
+        char* buffer_name = nullptr;
+        uint32 buffer_size = 0;
+        uint8* data = GetBufferData(model.bufferViews, i, buffers_data, &buffer_size, &buffer_name);
+
+        VkBufferUsageFlags flags = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+
+        if (buffer_name == nullptr)
+        {
+            snprintf(buffer_name, 64, "Buffer_%u", i);
+        }
+        else
+        {
+            snprintf(buffer_name, 64, "%s_%u", buffer_name, i);
+        }
+
+        Raptor::Graphics::BufferResource* br = renderer.CreateBuffer(Raptor::Graphics::ResourceUsageType::Immutable, flags, buffer_size, data, buffer_name);
+        ASSERT(br != nullptr);
+
+        buffers[i] = *br;
+    }
+
+    Raptor::Core::ChangeDirectory(cwd);
+
 
     while (!window.ShouldClose())
     {

@@ -90,12 +90,34 @@ float Renderer::AspectRatio() const
 
 BufferResource* Renderer::CreateBuffer(const CreateBufferParams& params)
 {
+    BufferResource* buffer = buffers.obtain();
+
+    if (buffer)
+    {
+        BufferHandle handle = gpu_device->CreateBuffer(params);
+        buffer->handle = handle;
+        buffer->name = params.name;
+        gpu_device->QueryBuffer(handle, buffer->desc);
+
+        if (params.name != nullptr)
+        {
+            uint64 hash = HashString(params.name);
+            Pair<uint64, BufferResource*> pair {hash, buffer};
+            resource_cache.buffers.insert(pair);
+        }
+        
+        buffer->references = 1;
+
+        return buffer;
+    }
+
     return nullptr;
 }
 
-BufferResource* Renderer::CreateBuffer(VkBufferUsageFlags type, ResourceUsageType usage, uint32 size, void* data, const char* name)
+BufferResource* Renderer::CreateBuffer(ResourceUsageType usage, VkBufferUsageFlags flags, uint32 size, void* data, const char* name)
 {
-    return nullptr;
+    CreateBufferParams params {usage, flags, size, data, name};
+    return CreateBuffer(params);
 }
 
 TextureResource* Renderer::CreateTexture(const CreateTextureParams& params)

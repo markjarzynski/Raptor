@@ -45,7 +45,7 @@ public:
     float AspectRatio() const;
 
     BufferResource* CreateBuffer(const CreateBufferParams& params);
-    BufferResource* CreateBuffer(VkBufferUsageFlags type, ResourceUsageType usage, uint32 size, void* data, const char* name);
+    BufferResource* CreateBuffer(ResourceUsageType usage, VkBufferUsageFlags flags, uint32 size, void* data, const char* name);
 
     TextureResource* CreateTexture(const CreateTextureParams& params);
     TextureResource* CreateTexture(const char* name, const char* filename);

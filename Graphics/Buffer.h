@@ -33,8 +33,8 @@ struct Buffer
 struct CreateBufferParams
 {
     ResourceUsageType usage = ResourceUsageType::Immutable;
-    uint32 size = 0;
     VkBufferUsageFlags flags = 0;
+    uint32 size = 0;
     void* data = nullptr;
     const char* name;
 }; // struct CreateBufferParams

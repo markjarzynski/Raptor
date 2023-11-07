@@ -44,6 +44,9 @@
         "istream": "cpp",
         "variant": "cpp",
         "xlocmes": "cpp",
-        "xlocnum": "cpp"
+        "xlocnum": "cpp",
+        "filesystem": "cpp",
+        "compare": "cpp",
+        "ratio": "cpp"
     }
 }

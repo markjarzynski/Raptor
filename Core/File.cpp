@@ -5,6 +5,8 @@
 #include<unistd.h> 
 #endif
 
+#include <stdio.h>
+
 #include "File.h"
 #include "Debug.h"
 #include "Types.h"
@@ -52,6 +54,16 @@ void FilenameFromPath(char* path)
     }
 }
 
+void CurrentDirectory(char* path)
+{
+#if defined(_WIN64)
+    DWORD len = GetCurrentDirectoryA(MAX_FILENAME_LENGTH, path);
+    path[len] = 0;
+#else
+    getcwd(path, MAX_FILENAME_LENGTH);
+#endif
+}
+
 void ChangeDirectory(const char* path)
 {
 #if defined(_WIN64)
@@ -65,6 +77,34 @@ void ChangeDirectory(const char* path)
         Raptor::Debug::Log("Error: Could not change directory to %s\n", path);
     }
 #endif
+}
+
+static long FileGetSize(FileHandle file)
+{
+    long file_size;
+
+    fseek(file, 0, SEEK_END);
+    file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    return file_size;
+}
+
+FileReadResult FileReadBinary(const char* filename, Allocator* allocator)
+{
+    FileReadResult result {nullptr, 0};
+    FileHandle file = fopen(filename, "rb");
+
+    if (file)
+    {
+        sizet filesize = FileGetSize(file);
+        result.data = (char*)allocator->allocate(filesize);
+        fread(result.data, filesize, 1, file);
+        result.size = filesize;
+        fclose(file);
+    }
+
+    return result;
 }
 
 } // namespace Core
