@@ -7,6 +7,7 @@ target_sources(${PROJECT_NAME}
 PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/CommandBuffer.cpp
     ${CMAKE_CURRENT_LIST_DIR}/CommandBufferRing.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/DescriptorSetLayout.cpp
     ${CMAKE_CURRENT_LIST_DIR}/GPUDevice.cpp
     ${CMAKE_CURRENT_LIST_DIR}/GPUProfiler.cpp
     ${CMAKE_CURRENT_LIST_DIR}/GPUTimestampManager.cpp
@@ -14,6 +15,7 @@ PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/RenderPass.cpp
     ${CMAKE_CURRENT_LIST_DIR}/ResourceCache.cpp
     ${CMAKE_CURRENT_LIST_DIR}/ResourcePool.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/Pipeline.cpp
     ${CMAKE_CURRENT_LIST_DIR}/Window.cpp
 PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/Buffer.h
@@ -25,6 +27,7 @@ PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/GPUDevice.h
     ${CMAKE_CURRENT_LIST_DIR}/GPUProfiler.h
     ${CMAKE_CURRENT_LIST_DIR}/GPUTimestampManager.h
+    ${CMAKE_CURRENT_LIST_DIR}/Mesh.h
     ${CMAKE_CURRENT_LIST_DIR}/Renderer.h
     ${CMAKE_CURRENT_LIST_DIR}/RenderPass.h
     ${CMAKE_CURRENT_LIST_DIR}/ResourceCache.h
@@ -55,4 +58,5 @@ PRIVATE
     "imgui"
     "Raptor::Core"
     "Raptor::Debug"
+    "Raptor::Math"
 )

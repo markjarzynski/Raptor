@@ -34,6 +34,7 @@ add_executable(${PROJECT_NAME}
 
 add_subdirectory(Core)
 add_subdirectory(Debug)
+add_subdirectory(Math)
 add_subdirectory(Graphics)
 add_subdirectory(Debug/UI)
 
@@ -53,6 +54,7 @@ PRIVATE
     tinygltf
     "Raptor::Core"
     "Raptor::Debug"
+    "Raptor::Math"
     "Raptor::Graphics"
     "Raptor::Debug::UI"
 )

@@ -70,9 +70,9 @@ public:
     // Create Resources
     BufferHandle CreateBuffer(const CreateBufferParams& params);
     TextureHandle CreateTexture(const CreateTextureParams& params);
-    PipelineHandle CreatePipeline();
+    PipelineHandle CreatePipeline(const CreatePipelineParams& params);
     SamplerHandle CreateSampler(const CreateSamplerParams& params);
-    DescriptorSetLayoutHandle CreateDescriptorSetLayout();
+    DescriptorSetLayoutHandle CreateDescriptorSetLayout( const CreateDescriptorSetLayoutParams& params);
     DescriptorSetHandle CreateDescriptorSet();
     RenderPassHandle CreateRenderPass(const CreateRenderPassParams& params);
     ShaderStateHandle CreateShaderState();

@@ -911,8 +911,10 @@ TextureHandle GPUDevice::CreateTexture(const CreateTextureParams& params)
 
 
 //------------------------------------------------------------------------------
-PipelineHandle GPUDevice::CreatePipeline()
+PipelineHandle GPUDevice::CreatePipeline(const CreatePipelineParams& params)
 {
+    // TODO:
+
     return 0;
 }
 //------------------------------------------------------------------------------
@@ -954,9 +956,50 @@ SamplerHandle GPUDevice::CreateSampler(const CreateSamplerParams& params)
 }
 
 //------------------------------------------------------------------------------
-DescriptorSetLayoutHandle GPUDevice::CreateDescriptorSetLayout()
+DescriptorSetLayoutHandle GPUDevice::CreateDescriptorSetLayout(const CreateDescriptorSetLayoutParams& params)
 {
-    return 0;
+    DescriptorSetLayoutHandle handle = descriptor_set_layouts.obtainResource();
+    if (handle == InvalidDescriptorSetLayout)
+        return handle;
+    
+    DescriptorSetLayout* descriptor_set_layout = (DescriptorSetLayout*)descriptor_set_layouts.accessResource(handle);
+
+    descriptor_set_layout->num_bindings = (uint16) params.num_bindings;
+    uint8* memory = (uint8*)allocator->allocate((sizeof(VkDescriptorSetLayoutBinding) + sizeof(DescriptorBinding)) * params.num_bindings);
+    descriptor_set_layout->bindings = (DescriptorBinding*)memory;
+    descriptor_set_layout->vk_binding = (VkDescriptorSetLayoutBinding*) (memory + sizeof(DescriptorBinding) * params.num_bindings);
+    descriptor_set_layout->handle = handle;
+    descriptor_set_layout->set_index = (uint16)params.set_index;
+    
+    uint32 used_bindings =0;
+    for (uint32 i = 0; i < params.num_bindings; i++)
+    {
+        DescriptorBinding& binding = descriptor_set_layout->bindings[i];
+        const CreateDescriptorSetLayoutParams::Binding& input_binding = params.bindings[i];
+        binding.start = (input_binding.start == UINT16_MAX) ? (uint16)i : input_binding.start;
+        binding.count = 1;
+        binding.vk_descriptor_type = input_binding.vk_descriptor_type;
+        binding.name = input_binding.name;
+
+        VkDescriptorSetLayoutBinding& vk_binding = descriptor_set_layout->vk_binding[used_bindings++];
+
+        vk_binding.binding = binding.start;
+        vk_binding.descriptorType = input_binding.vk_descriptor_type;
+        vk_binding.descriptorType = (vk_binding.descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : vk_binding.descriptorType;
+        vk_binding.descriptorCount = 1;
+
+        vk_binding.stageFlags = VK_SHADER_STAGE_ALL;
+        vk_binding.pImmutableSamplers = nullptr;
+    }
+
+    VkDescriptorSetLayoutCreateInfo layout_info {};
+    layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layout_info.bindingCount = used_bindings;
+    layout_info.pBindings = descriptor_set_layout->vk_binding;
+
+    vkCreateDescriptorSetLayout(vk_device, &layout_info, vk_allocation_callbacks, &descriptor_set_layout->vk_descriptor_set_layout);
+
+    return handle;
 }
 
 static void FillWriteDescriptorSets(GPUDevice& gpu_device, const DescriptorSetLayout* descriptor_set_layout,
