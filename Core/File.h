@@ -25,7 +25,11 @@ struct FileReadResult
 }; // struct FileReadResult
 
 static long FileGetSize(FileHandle file);
+
 FileReadResult FileReadBinary(const char* filename, Allocator* allocator);
+char* FileReadBinary(const char* filename, Allocator* allocator, sizet* size);
+
+bool FileDelete(const char* path);
 
 } // namespace Core
 } // namespace Raptor

@@ -139,5 +139,35 @@ struct ResourceBinding
     const char* name = nullptr;
 }; // struct ResourceBinding
 
+static const char* ToStageDefines(VkShaderStageFlagBits value)
+{
+    switch (value)
+    {
+        case VK_SHADER_STAGE_VERTEX_BIT:
+            return "VERTEX";
+        case VK_SHADER_STAGE_FRAGMENT_BIT:
+            return "FRAGMENT";
+        case VK_SHADER_STAGE_COMPUTE_BIT:
+            return "Compute";
+        default:
+            return "";
+    }
+}
+
+static const char* ToCompilerExtension(VkShaderStageFlagBits value)
+{
+    switch (value)
+    {
+        case VK_SHADER_STAGE_VERTEX_BIT:
+            return "vert";
+        case VK_SHADER_STAGE_FRAGMENT_BIT:
+            return "frag";
+        case VK_SHADER_STAGE_COMPUTE_BIT:
+            return "comp";
+        default:
+            return "";
+    }
+}
+
 } // namespace Graphics
 } // namespace Raptor

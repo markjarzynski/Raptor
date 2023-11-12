@@ -107,5 +107,39 @@ FileReadResult FileReadBinary(const char* filename, Allocator* allocator)
     return result;
 }
 
+char* FileReadBinary(const char* filename, Allocator* allocator, sizet* size)
+{
+    char* out = 0;
+    
+    FILE* file = fopen(filename, "rb");
+
+    if (file)
+    {
+        sizet filesize = FileGetSize(file);
+
+        out = (char*)allocator->allocate(filesize + 1);
+        fread(out, filesize, 1, file);
+        out[filesize] = 0;
+
+        if (size)
+            *size = filesize;
+        
+        fclose(file);
+    }
+
+    return out;
+}
+
+bool FileDelete(const char* path)
+{
+#if defined(_WIN64)
+    int result = remove(path);
+    return (result != 0);
+#else
+    int result = remove(path);
+    return (result == 0);
+#endif
+}
+
 } // namespace Core
 } // namespace Raptor

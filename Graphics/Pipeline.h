@@ -87,7 +87,7 @@ struct BlendState
     VkBlendOp color_operation = VK_BLEND_OP_ADD;
 
     VkBlendFactor source_alpha = VK_BLEND_FACTOR_ONE;
-    VkBlendFactor destiantion_alpha = VK_BLEND_FACTOR_ONE;
+    VkBlendFactor destination_alpha = VK_BLEND_FACTOR_ONE;
     VkBlendOp alpha_operation = VK_BLEND_OP_ADD;
 
     ColorWriteEnabled color_write_mask = ColorWriteEnabled::All;
@@ -110,12 +110,15 @@ enum class VertexInputRate
 
 struct VertexStream
 {
-    uint16 binding = 0;
-    uint16 stride = 0;
+    uint32 binding = 0;
+    uint32 stride = 0;
     VertexInputRate input_rate = VertexInputRate::Max;
 }; // struct VertexStream
 
-enum class VertexComponentFormat
+
+namespace VertexComponentFormat
+{
+enum Enum
 {
     Float, Float2, Float3, Float4,
     Mat4, 
@@ -125,12 +128,36 @@ enum class VertexComponentFormat
     Max,
 };
 
+static VkFormat ToVkFormat(Enum format)
+{
+    static VkFormat s_vk_formats[Enum::Max] = {
+        VK_FORMAT_R32_SFLOAT, VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32A32_SFLOAT,
+        VK_FORMAT_R32G32B32A32_SFLOAT,
+        VK_FORMAT_R8_SINT, VK_FORMAT_R8G8B8A8_SNORM, VK_FORMAT_R8_UINT, VK_FORMAT_R8G8B8A8_UINT, 
+        VK_FORMAT_R16G16_SINT, VK_FORMAT_R16G16_SNORM, VK_FORMAT_R16G16B16A16_SINT, VK_FORMAT_R16G16B16A16_SNORM,
+        VK_FORMAT_R32_UINT, VK_FORMAT_R32G32_UINT, VK_FORMAT_R32G32B32A32_UINT
+    };
+    return s_vk_formats[format];
+}
+}; // namespace VertexComponentFormat
+
+// enum class VertexComponentFormat
+// {
+//     Float, Float2, Float3, Float4,
+//     Mat4, 
+//     Byte, Byte4N, UByte, UByte4N,
+//     Short2, Short2N, Short4, Short4N,
+//     Uint, Uint2, Uint4,
+//     Max,
+// };
+
 struct VertexAttribute
 {
-    uint16 location = 0;
-    uint16 binding = 0;
+    uint32 location = 0;
+    uint32 binding = 0;
+    //VkFormat format = VK_FORMAT_UNDEFINED;
+    VertexComponentFormat::Enum format = VertexComponentFormat::Max;
     uint32 offset = 0;
-    VertexComponentFormat format = VertexComponentFormat::Max;
 }; // struct VertexAttribute
 
 struct CreateVertexInputParams

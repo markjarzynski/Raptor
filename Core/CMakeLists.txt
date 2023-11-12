@@ -8,6 +8,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 target_sources(${PROJECT_NAME}
 PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/File.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/Process.cpp
     ${CMAKE_CURRENT_LIST_DIR}/ResourceManager.cpp
 PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/Allocator.h
@@ -16,6 +17,7 @@ PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/File.h
     ${CMAKE_CURRENT_LIST_DIR}/Hash.h
     ${CMAKE_CURRENT_LIST_DIR}/HashMap.h
+    ${CMAKE_CURRENT_LIST_DIR}/Process.h
     ${CMAKE_CURRENT_LIST_DIR}/ResourceManager.h
     ${CMAKE_CURRENT_LIST_DIR}/Service.h
     ${CMAKE_CURRENT_LIST_DIR}/Types.h

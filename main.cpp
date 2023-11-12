@@ -200,20 +200,20 @@ int main( int argc, char** argv)
     {
         Raptor::Graphics::CreatePipelineParams pipeline_params;
 
+        pipeline_params.vertex_input.AddVertexAttribute({0, 0, Raptor::Graphics::VertexComponentFormat::Enum::Float3, 0});
         // position
-        pipeline_params.vertex_input.AddVertexAttribute({0, 0, 0, Raptor::Graphics::VertexComponentFormat::Float3});
         pipeline_params.vertex_input.AddVertexStream({0, 12, Raptor::Graphics::VertexInputRate::PerVertex});
         
         // tangent
-        pipeline_params.vertex_input.AddVertexAttribute({1, 1, 0, Raptor::Graphics::VertexComponentFormat::Float4});
+        pipeline_params.vertex_input.AddVertexAttribute({1, 1, Raptor::Graphics::VertexComponentFormat::Enum::Float4, 0});
         pipeline_params.vertex_input.AddVertexStream({1, 16, Raptor::Graphics::VertexInputRate::PerVertex});
           
         // normal
-        pipeline_params.vertex_input.AddVertexAttribute({2, 2, 0, Raptor::Graphics::VertexComponentFormat::Float3});
+        pipeline_params.vertex_input.AddVertexAttribute({2, 2, Raptor::Graphics::VertexComponentFormat::Enum::Float3, 0});
         pipeline_params.vertex_input.AddVertexStream({2, 12, Raptor::Graphics::VertexInputRate::PerVertex});
        
         // texcoord
-        pipeline_params.vertex_input.AddVertexAttribute({3, 3, 0, Raptor::Graphics::VertexComponentFormat::Float2});
+        pipeline_params.vertex_input.AddVertexAttribute({3, 3, Raptor::Graphics::VertexComponentFormat::Enum::Float2, 0});
         pipeline_params.vertex_input.AddVertexStream({3, 8, Raptor::Graphics::VertexInputRate::PerVertex});
        
         // render pass

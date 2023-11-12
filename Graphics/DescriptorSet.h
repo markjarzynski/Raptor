@@ -23,6 +23,11 @@ struct DescriptorSet
 
 }; // struct DescriptorSet
 
+struct CreateDescriptorSetParams
+{
+    // TODO
+}; // struct CreateDescriptorSetParams
+
 struct DesciptorSetDescription
 {
     ResourceData resources[MAX_DESCRIPTORS_PER_SET];

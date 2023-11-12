@@ -47,6 +47,13 @@
         "xlocnum": "cpp",
         "filesystem": "cpp",
         "compare": "cpp",
-        "ratio": "cpp"
-    }
+        "ratio": "cpp",
+        "iomanip": "cpp",
+        "locale": "cpp",
+        "sstream": "cpp",
+        "string": "cpp",
+        "xfacet": "cpp",
+        "xlocbuf": "cpp"
+    },
+    "editor.suggest.snippetsPreventQuickSuggestions": false,
 }

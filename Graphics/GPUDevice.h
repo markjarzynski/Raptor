@@ -73,9 +73,9 @@ public:
     PipelineHandle CreatePipeline(const CreatePipelineParams& params);
     SamplerHandle CreateSampler(const CreateSamplerParams& params);
     DescriptorSetLayoutHandle CreateDescriptorSetLayout( const CreateDescriptorSetLayoutParams& params);
-    DescriptorSetHandle CreateDescriptorSet();
+    DescriptorSetHandle CreateDescriptorSet(const CreateDescriptorSetParams& params);
     RenderPassHandle CreateRenderPass(const CreateRenderPassParams& params);
-    ShaderStateHandle CreateShaderState();
+    ShaderStateHandle CreateShaderState( const CreateShaderStateParams& params);
 
     // Destroy Resources
     void DestroyBuffer(BufferHandle handle);
@@ -182,6 +182,7 @@ private:
 
     VkBool32 GetFamilyQueue(VkPhysicalDevice pDevice);
     void GetVulkanBinariesPath(char* path, sizet size = 512);
+    VkShaderModuleCreateInfo CompileShader(const char* code, uint32 code_size, VkShaderStageFlagBits stage, const char* name);
 
     void* MapBuffer(const MapBufferParams& params);
     void UnmapBuffer(const MapBufferParams& params);
@@ -274,8 +275,8 @@ static void CreateTexture(GPUDevice& gpu_device, const CreateTextureParams& para
 static void ResizeTexture(GPUDevice& gpu_device, Texture* texture, Texture* delete_texture, uint16 width, uint16 height, uint16 depth);
 static void CreateSwapchainPass(GPUDevice& gpu_device, const CreateRenderPassParams params, RenderPass* render_pass);
 static RenderPassOutput CreateRenderPassOutput(GPUDevice& gpu_device, const CreateRenderPassParams params);
-static VkRenderPass GetRenderPass(GPUDevice& gpu_device, const RenderPassOutput& output, const char* name);
-static VkRenderPass CreateRenderPass(GPUDevice& gpu_device, const RenderPassOutput& output, const char* name);
+
+static VkRenderPass CreateVkRenderPass(GPUDevice& gpu_device, const RenderPassOutput& output, const char* name);
 static void FillWriteDescriptorSets(GPUDevice& gpu_device, const DescriptorSetLayout* descriptor_set_layout, VkDescriptorSet vk_descriptor_set, VkWriteDescriptorSet* descriptor_write, VkDescriptorBufferInfo* buffer_info, VkDescriptorImageInfo* image_info, VkSampler vk_default_sampler, uint32& num_resources, const ResourceHandle* resources, const SamplerHandle* samplers, const uint16* bindings);
 
 #ifdef VULKAN_DEBUG
