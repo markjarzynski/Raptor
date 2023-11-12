@@ -72,10 +72,10 @@ Raptor::Graphics::DescriptorSetHandle             cube_rl;
 Raptor::Graphics::DescriptorSetLayoutHandle       cube_dsl;
 
 struct UniformData {
-    Raptor::Math::mat4s m;
-    Raptor::Math::mat4s vp;
-    Raptor::Math::vec4s eye;
-    Raptor::Math::vec4s light;
+    Raptor::Math::mat4f m;
+    Raptor::Math::mat4f vp;
+    Raptor::Math::vec4f eye;
+    Raptor::Math::vec4f light;
 };
 
 int main( int argc, char** argv)
@@ -187,11 +187,11 @@ int main( int argc, char** argv)
     eastl::vector<Raptor::Graphics::MeshDraw*> mesh_draws(model.meshes.size(), allocator);
     eastl::vector<Raptor::Graphics::BufferHandle> custom_mesh_buffers(8, allocator);
 
-    Raptor::Math::vec4s dummy_data[3];
+    Raptor::Math::vec4f dummy_data[3];
     Raptor::Graphics::CreateBufferParams buffer_params{};
     buffer_params.usage = Raptor::Graphics::ResourceUsageType::Immutable;
     buffer_params.flags = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    buffer_params.size = sizeof(Raptor::Math::vec4s) * 3;
+    buffer_params.size = sizeof(Raptor::Math::vec4f) * 3;
     buffer_params.data = dummy_data;
     buffer_params.name = "Dummy_Attribute_Buffer";
 
@@ -519,7 +519,7 @@ void main() {
 
         eastl::vector<int32> node_parents(model.nodes.size(), allocator);
         eastl::vector<uint32> node_stack(allocator);
-        eastl::vector<Raptor::Math::mat4s> node_matrix(model.nodes.size(), allocator);
+        eastl::vector<Raptor::Math::mat4f> node_matrix(model.nodes.size(), allocator);
 
         for (uint32 node_index = 0; node_index < root_gltf_scene.nodes.size(); ++node_index)
         {
@@ -574,19 +574,78 @@ void main() {
                 local_matrix = transform.CalcMatrix();
 
             }
+
+            node_matrix[node_index] = local_matrix;
+
+            for (uint32 child_index = 0; child_index < node.children.size(); child_index++)
+            {
+                uint32 child_node_index = node.children[child_index];
+                node_parents[child_node_index] = node_index;
+                node_stack.push_back(child_node_index);
+            }
+
+            if (node.mesh < 0)
+                continue;
+
+            tinygltf::Mesh& mesh = model.meshes[node.mesh];
+
+            Raptor::Math::mat4f final_matrix = local_matrix;
+            int32 node_parent = node_parents[node_index];
+            while (node_parent != -1)
+            {
+                final_matrix = node_matrix[node_parent] * final_matrix;
+                node_parent = node_parents[node_parent];
+            }
+
+            for (uint32 prim_index = 0; prim_index < mesh.primitives.size(); prim_index++)
+            {
+                Raptor::Graphics::MeshDraw mesh_draw {};
+                // TODO
+            }
+
         }
+
 
 
     }
 
 
+    Raptor::Math::vec3f eye {0.f, 2.f, 2.f};
+    Raptor::Math::vec3f look {0.f, 0.f, -1.f};
+    Raptor::Math::vec3f right {1.f, 0.f, 0.f};
+
+    float yaw = 0.f;
+    float pitch = 0.f;
+    float model_scale = 1.f;
 
     while (!window.ShouldClose())
     {
         window.PollEvents();
         //debugUI.Update();
         //debugUI.Render();
+
+        // TODO
     }
+
+    for (uint32 mesh_index = 0; mesh_index < mesh_draws.size(); mesh_index++)
+    {
+        //Raptor::Graphics::MeshDraw& mesh_draw = mesh_draws[mesh_index];
+        //gpu_device.DestroyDescriptorSet(mesh_draw.descriptor_set);
+        //gpu_device.DestroyBuffer(mesh_draw.material_buffer);
+    }
+    mesh_draws.clear();
+
+    for (uint32 i = 0; i < custom_mesh_buffers.size(); i++)
+    {
+        //gpu_device.DestroyBuffer(custom_mesh_buffers[i]);
+    }
+    custom_mesh_buffers.clear();
+
+    //gpu_device.DestroyBuffer(dummy_attribute_buffer);
+    //gpu_device.DestroyTexture(dummy_texture);
+    //gpu_device.DestroySampler(dummy_sampler);
+
+    // TODO    
 
     return 0;
 }
