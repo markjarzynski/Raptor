@@ -278,16 +278,8 @@ static TextureHandle CreateTextureFromFile(GPUDevice& gpu_device, const char* fi
         }
 
         CreateTextureParams params;
-        params.data = image_data;
-        params.vk_format = VK_FORMAT_R8G8B8A8_UNORM;
-        // params.vk_image_type = VK_IMAGE_TYPE_2D;
-        // params.vk_image_view_type = VK_IMAGE_VIEW_TYPE_2D;
-        // params.mipmaps = 1;
-        // params.flags = 0;
-        params.width = (uint16)width;
-        params.height = (uint16)height;
-        // params.depth = 1;
-        params.name = name;
+        params.SetData(image_data).SetFormatType(VK_FORMAT_R8G8B8A8_UNORM, TextureType::Enum::Texture2D).SetFlags(1, 0).SetSize((uint16)width, (uint16)height, 1).SetName(name);
+
         TextureHandle new_texture = gpu_device.CreateTexture(params);
 
         free(image_data);

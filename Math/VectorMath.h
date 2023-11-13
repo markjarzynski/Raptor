@@ -38,6 +38,17 @@ public:
         T v[3];
         struct { T x, y, z; };
     };
+
+    vec3<T> operator + (const vec3& rhs) const
+    {
+        vec3<T> result;
+        result.x = this->x + rhs.x;
+        result.y = this->y + rhs.y;
+        result.z = this->z + rhs.z;
+
+        return result;
+    }
+
 }; // class vec3
 
 template<typename T>
@@ -55,6 +66,18 @@ public:
         struct { T x, y, z, w; };
     };
 }; // class vec4
+
+template<typename T>
+T dot(vec2<T> v, vec2<T> u);
+
+template<typename T>
+T dot(vec3<T> v, vec3<T> u);
+
+template<typename T>
+T dot(vec4<T> v, vec4<T> u);
+
+template<typename T>
+vec3<T>* cross(vec3<T> v, vec3<T> u);
 
 typedef vec2<int32> vec2i;
 typedef vec2<uint32> vec2ui;

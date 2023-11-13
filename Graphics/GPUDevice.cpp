@@ -71,7 +71,7 @@ static HashMap<uint64, VkRenderPass> render_pass_cache;
 GPUDevice::GPUDevice(Window& window, Allocator& allocator, uint32 flags, uint32 gpu_time_queries_per_frame)
     : window(&window), allocator(&allocator), m_uFlags(flags)
 {
-    resource_deleting_queue.set_allocator(allocator);
+    resource_deletion_queue.set_allocator(allocator);
     descriptor_set_updates.set_allocator(allocator);
     render_pass_cache.set_allocator(allocator);
 
@@ -124,8 +124,7 @@ void GPUDevice::Init(uint32 gpu_time_queries_per_frame)
     // create depth texture
     CreateTextureParams depth_texture_params {};
     depth_texture_params.vk_format = VK_FORMAT_D32_SFLOAT;
-    depth_texture_params.vk_image_type = VK_IMAGE_TYPE_2D;
-    depth_texture_params.vk_image_view_type = VK_IMAGE_VIEW_TYPE_2D;
+    depth_texture_params.type = TextureType::Enum::Texture2D;
     depth_texture_params.width = window->width;
     depth_texture_params.height = window->height;
     depth_texture_params.name = "Depth Texture";
@@ -175,7 +174,7 @@ void GPUDevice::Init(Window& window, Allocator& allocator, uint32 flags, uint32 
     this->allocator = &allocator;
     this->m_uFlags = flags;
 
-    resource_deleting_queue.set_allocator(allocator);
+    resource_deletion_queue.set_allocator(allocator);
     descriptor_set_updates.set_allocator(allocator);
     render_pass_cache.set_allocator(allocator);
 
@@ -763,8 +762,7 @@ static void CreateTexture(GPUDevice& gpu_device, const CreateTextureParams& para
     VkResult result;
 
     texture->vk_format = params.vk_format;
-    texture->vk_image_type = params.vk_image_type;
-    texture->vk_image_view_type = params.vk_image_view_type;
+    texture->type = params.type;
     texture->width = params.width;
     texture->height = params.height;
     texture->depth = params.depth;
@@ -777,7 +775,7 @@ static void CreateTexture(GPUDevice& gpu_device, const CreateTextureParams& para
     image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     image_info.format = params.vk_format;
     image_info.flags = 0;
-    image_info.imageType = params.vk_image_type;
+    image_info.imageType = TextureType::ToVkImageType(params.type);
     image_info.extent.width = params.width;
     image_info.extent.height = params.height;
     image_info.extent.depth = params.depth;
@@ -813,7 +811,7 @@ static void CreateTexture(GPUDevice& gpu_device, const CreateTextureParams& para
     VkImageViewCreateInfo view_info {};
     view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     view_info.image = texture->vk_image;
-    view_info.viewType = params.vk_image_view_type;
+    view_info.viewType = TextureType::ToVkImageViewType(params.type);
     view_info.format = params.vk_format;
 
     if (TextureFormat::HasDepthOrStencil(params.vk_format))
@@ -1800,7 +1798,7 @@ ShaderStateHandle GPUDevice::CreateShaderState( const CreateShaderStateParams& p
 void GPUDevice::DestroyBuffer(BufferHandle handle)
 {
     if (handle < buffers.poolSize)
-        resource_deleting_queue.push_back({ResourceDeletionType::Buffer, handle, current_frame});
+        resource_deletion_queue.push_back({ResourceDeletionType::Buffer, handle, current_frame});
     else
         Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid Buffer %u\n", handle);
 }
@@ -1809,7 +1807,7 @@ void GPUDevice::DestroyBuffer(BufferHandle handle)
 void GPUDevice::DestroyTexture(TextureHandle handle)
 {
     if (handle < textures.poolSize)
-        resource_deleting_queue.push_back({ResourceDeletionType::Texture, handle, current_frame});
+        resource_deletion_queue.push_back({ResourceDeletionType::Texture, handle, current_frame});
     else
         Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid Texture %u\n", handle);
 }
@@ -1819,7 +1817,7 @@ void GPUDevice::DestroyPipeline(PipelineHandle handle)
 {
     if (handle < pipelines.poolSize)
     {
-        resource_deleting_queue.push_back({ResourceDeletionType::Pipeline, handle, current_frame});
+        resource_deletion_queue.push_back({ResourceDeletionType::Pipeline, handle, current_frame});
         Pipeline* pipeline = (Pipeline*)pipelines.accessResource(handle);
         DestroyShaderState(pipeline->shader_state);
     }
@@ -1833,7 +1831,7 @@ void GPUDevice::DestroyPipeline(PipelineHandle handle)
 void GPUDevice::DestroySampler(SamplerHandle handle)
 {
     if (handle < samplers.poolSize)
-        resource_deleting_queue.push_back({ResourceDeletionType::Sampler, handle, current_frame});
+        resource_deletion_queue.push_back({ResourceDeletionType::Sampler, handle, current_frame});
     else
         Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid Sampler %u\n", handle);
 }
@@ -1842,7 +1840,7 @@ void GPUDevice::DestroySampler(SamplerHandle handle)
 void GPUDevice::DestroyDescriptorSetLayout(DescriptorSetLayoutHandle handle)
 {
     if (handle < descriptor_set_layouts.poolSize)
-        resource_deleting_queue.push_back({ResourceDeletionType::DescriptorSetLayout, handle, current_frame});
+        resource_deletion_queue.push_back({ResourceDeletionType::DescriptorSetLayout, handle, current_frame});
     else
         Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid DescriptorSetLayout %u\n", handle);
 }
@@ -1851,7 +1849,7 @@ void GPUDevice::DestroyDescriptorSetLayout(DescriptorSetLayoutHandle handle)
 void GPUDevice::DestroyDescriptorSet(DescriptorSetHandle handle)
 {
     if (handle < descriptor_sets.poolSize)
-        resource_deleting_queue.push_back({ResourceDeletionType::DescriptorSet, handle, current_frame});
+        resource_deletion_queue.push_back({ResourceDeletionType::DescriptorSet, handle, current_frame});
     else
         Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid DescriptorSet %u\n", handle);
 }
@@ -1860,7 +1858,7 @@ void GPUDevice::DestroyDescriptorSet(DescriptorSetHandle handle)
 void GPUDevice::DestroyRenderPass(RenderPassHandle handle)
 {
     if (handle < render_passes.poolSize)
-        resource_deleting_queue.push_back({ResourceDeletionType::RenderPass, handle, current_frame});
+        resource_deletion_queue.push_back({ResourceDeletionType::RenderPass, handle, current_frame});
     else
         Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid RenderPass %u\n", handle);
 }
@@ -1869,7 +1867,7 @@ void GPUDevice::DestroyRenderPass(RenderPassHandle handle)
 void GPUDevice::DestroyShaderState(ShaderStateHandle handle)
 {
     if (handle < shaders.poolSize)
-        resource_deleting_queue.push_back({ResourceDeletionType::ShaderState, handle, current_frame});
+        resource_deletion_queue.push_back({ResourceDeletionType::ShaderState, handle, current_frame});
     else
         Raptor::Debug::Log("[Vulkan] Error: Trying to free invalid ShaderState %u\n", handle);
 }
@@ -1888,8 +1886,7 @@ void GPUDevice::QueryTexture(TextureHandle handle, TextureDescription& out_descr
     out_description.depth = texture->depth;
     out_description.mipmaps = texture->mipmaps;
     out_description.vk_format = texture->vk_format;
-    out_description.vk_image_type = texture->vk_image_type;
-    out_description.vk_image_view_type = texture->vk_image_view_type;
+    out_description.type = texture->type;
     out_description.render_target = (texture->flags & Texture::Flags::RenderTarget) == Texture::Flags::RenderTarget;
     out_description.compute_access = (texture->flags & Texture::Flags::Compute) == Texture::Flags::Compute;
     out_description.native_handle = (void*)&texture->vk_image;
@@ -1938,8 +1935,7 @@ static void ResizeTexture(GPUDevice& gpu_device, Texture* texture, Texture* dele
     params.mipmaps = texture->mipmaps;
     params.flags = texture->flags;
     params.vk_format = texture->vk_format;
-    params.vk_image_type = texture->vk_image_type;
-    params.vk_image_view_type = texture->vk_image_view_type;
+    params.type = texture->type;
     params.name = texture->name;
     params.width = texture->width;
     params.height = texture->height;
@@ -2016,6 +2012,15 @@ void GPUDevice::UnmapBuffer(const MapBufferParams& params)
         return;
 
     vmaUnmapMemory(vma_allocator, buffer->vma_allocation);
+}
+
+//------------------------------------------------------------------------------
+void GPUDevice::FrameCountersAdvance()
+{
+    previous_frame = current_frame;
+    current_frame = (current_frame + 1) % swapchain_image_count;
+
+    ++absolute_frame;
 }
 
 //------------------------------------------------------------------------------
@@ -2120,6 +2125,81 @@ void GPUDevice::NewFrame()
         }
     }
 
+}
+
+void GPUDevice::Present()
+{
+    VkFence* render_complete_fence = &vk_command_buffer_executed_fence[current_frame];
+    VkSemaphore* render_complete_semaphore = &vk_render_complete_semaphore[current_frame];
+
+    VkCommandBuffer enqueued_command_buffers[4];
+    for (uint32 i = 0; i < num_queued_command_buffers; i++)
+    {
+        CommandBuffer* command_buffer = queued_command_buffers[i];
+
+        enqueued_command_buffers[i] = command_buffer->vk_command_buffer;
+
+        if ((command_buffer->m_uFlags & CommandBufferFlags::isRecording) && command_buffer->current_render_pass && (command_buffer->current_render_pass->type != RenderPassType::Compute))
+            vkCmdEndRenderPass(command_buffer->vk_command_buffer);
+        
+        vkEndCommandBuffer(command_buffer->vk_command_buffer);
+    }
+
+    VkSemaphore wait_semaphores[] = {vk_image_acquired_semaphore};
+    VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+
+    VkSubmitInfo submit_info {};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.waitSemaphoreCount = 1;
+    submit_info.pWaitSemaphores = wait_semaphores;
+    submit_info.pWaitDstStageMask = wait_stages;
+    submit_info.commandBufferCount = num_queued_command_buffers;
+    submit_info.pCommandBuffers = enqueued_command_buffers;
+    submit_info.signalSemaphoreCount = 1;
+    submit_info.pSignalSemaphores = render_complete_semaphore;
+
+    vkQueueSubmit(vk_queue, 1, &submit_info, *render_complete_fence);
+
+    VkPresentInfoKHR present_info {};
+    present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    present_info.waitSemaphoreCount = 1;
+    present_info.pWaitSemaphores = render_complete_semaphore;
+
+    VkSwapchainKHR swapchains[] = {vk_swapchain};
+    present_info.swapchainCount = 1;
+    present_info.pSwapchains = swapchains;
+    present_info.pImageIndices = &image_index;
+    present_info.pResults = nullptr;
+    VkResult result = vkQueuePresentKHR(vk_queue, &present_info);
+
+    num_queued_command_buffers = 0;
+
+    // TODO Gputimestamp
+
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || (m_uFlags & Flags::Resized))
+    {
+        m_uFlags &= ~Flags::Resized;
+        ResizeSwapchain();
+
+        FrameCountersAdvance();
+
+        return;
+    }
+
+    FrameCountersAdvance();
+
+    if (resource_deletion_queue.size() > 0)
+    {
+        // TODO
+    }
+}
+
+void GPUDevice::Resize(uint16 width, uint16 height)
+{
+    swapchain_width = width;
+    swapchain_height = height;
+
+    m_uFlags |= Flags::Resized;
 }
 
 //------------------------------------------------------------------------------

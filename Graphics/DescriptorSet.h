@@ -25,7 +25,21 @@ struct DescriptorSet
 
 struct CreateDescriptorSetParams
 {
-    // TODO
+    ResourceHandle resources[MAX_DESCRIPTORS_PER_SET];
+    SamplerHandle samplers[MAX_DESCRIPTORS_PER_SET];
+    uint16 bindings[MAX_DESCRIPTORS_PER_SET];
+
+    DescriptorSetLayoutHandle layout;
+    uint32 num_resources = 0;
+
+    const char* name = nullptr;
+
+    CreateDescriptorSetParams& Reset();
+    CreateDescriptorSetParams& SetLayout(DescriptorSetLayoutHandle layout);
+    CreateDescriptorSetParams& Texture(TextureHandle texture, uint16 binding);
+    CreateDescriptorSetParams& Buffer(BufferHandle buffer, uint16 binding);
+    CreateDescriptorSetParams& TextureSampler(TextureHandle texture, SamplerHandle sampler, uint16 binding);
+    CreateDescriptorSetParams& SetName(const char* name);
 }; // struct CreateDescriptorSetParams
 
 struct DesciptorSetDescription

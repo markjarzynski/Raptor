@@ -6,12 +6,12 @@ namespace Math
 {
 
 template<typename T>
-mat4<T>* mat4<T>::MakeIdentity()
+mat4<T>* mat4<T>::Identity()
 {
     _11 = _22 = _33 = _44 = static_cast<T>(1);
     _12 = _13 = _14 = _21 = _23 = _24 = _31 = _32 = _34 = _41 = _42 = _43 = static_cast<T>(0);
 
-    return *this;
+    return this;
 }
 
 template<typename T>
@@ -56,6 +56,53 @@ mat4<T>* mat4<T>::FromQuaternion(const vec4<T> q)
     _42 = 0;
     _43 = 0;
     _44 = 1;
+
+    return this;
+}
+
+template<typename T>
+mat4<T>* mat4<T>::FromPerspective(T fov, T aspect, T near, T far)
+{
+    Zero();
+
+    float c = 1.f / tanf(fov * 0.5f);
+    float fn = 1.f / (near - far);
+
+    _11 = c / aspect;
+    _22 = c;
+    _33 = -far * fn;
+    _34 = 1.f;
+    _43 = near * far * fn;
+
+    return this;
+}
+
+template<typename T>
+mat4<T>* LookAt(vec3<T> eye, vec3<T> center, vec3<T> up)
+{
+    Identity();
+
+    vec3<T> c = center - eye;
+    c.normalize();
+
+    vec3<T> a = cross(c, up);
+    vec3<T> b = cross(a, c);
+
+    _11 = a.x;
+    _12 = b.x;
+    _13 = c.x;
+
+    _21 = a.y;
+    _22 = b.y;
+    _23 = c.y;
+
+    _31 = a.z;
+    _32 = b.z;
+    _33 = c.z;
+    
+    _41 = -dot(a, eye);
+    _42 = -dot(b, eye);
+    _43 = -dot(c, eye);
 
     return this;
 }

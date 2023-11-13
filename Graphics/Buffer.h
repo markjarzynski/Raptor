@@ -37,6 +37,12 @@ struct CreateBufferParams
     uint32 size = 0;
     void* data = nullptr;
     const char* name;
+
+    CreateBufferParams& Reset();
+    CreateBufferParams& Set(ResourceUsageType usage, VkBufferUsageFlags flags, uint32 size);
+    CreateBufferParams& SetData(void* data);
+    CreateBufferParams& SetName(const char* name);
+
 }; // struct CreateBufferParams
 
 struct MapBufferParams

@@ -10,17 +10,28 @@ namespace Raptor
 {
 namespace Graphics
 {
-using Raptor::Math::vec3s;
-using Raptor::Math::vec4s;
-using Raptor::Math::mat4s;
+using Raptor::Math::vec3f;
+using Raptor::Math::vec4f;
+using Raptor::Math::mat4f;
+
+enum MaterialFeatures : uint32
+{
+    ColorTexture            = 1 << 0,
+    NormalTexture           = 1 << 1,
+    RoughnessTexture        = 1 << 2,
+    OcclusionTexture        = 1 << 3,
+    EmissiveTexture         = 1 << 4,
+    TangentVertexAttribute  = 1 << 5,
+    TexcoordVertexAttribute = 1 << 6,
+};
 
 struct MaterialData
 {
-    vec4s base_color_factor;
-    mat4s model;
-    mat4s model_inv;
+    vec4f base_color_factor;
+    mat4f model;
+    mat4f model_inv;
 
-    vec3s emissive_factor;
+    vec3f emissive_factor;
     float metallic_factor;
 
     float roughness_factor;

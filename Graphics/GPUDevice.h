@@ -141,6 +141,9 @@ public:
     // Update Instant
     void UpdateDescriptorSetInstant(DescriptorSetUpdate* update);
 
+    void* MapBuffer(const MapBufferParams& params);
+    void UnmapBuffer(const MapBufferParams& params);
+
     Window* window;
     Allocator* allocator;
 
@@ -180,12 +183,11 @@ private:
     void CreateCommandBuffers();
     void DestroyCommandBuffers();
 
+    void FrameCountersAdvance();
+
     VkBool32 GetFamilyQueue(VkPhysicalDevice pDevice);
     void GetVulkanBinariesPath(char* path, sizet size = 512);
     VkShaderModuleCreateInfo CompileShader(const char* code, uint32 code_size, VkShaderStageFlagBits stage, const char* name);
-
-    void* MapBuffer(const MapBufferParams& params);
-    void UnmapBuffer(const MapBufferParams& params);
 
 public:
 
@@ -237,7 +239,7 @@ public:
     uint32 previous_frame;
     uint32 absolute_frame;
 
-    Vector<ResourceUpdate, Allocator> resource_deleting_queue;
+    Vector<ResourceUpdate, Allocator> resource_deletion_queue;
     Vector<DescriptorSetUpdate, Allocator> descriptor_set_updates;
     
     BufferHandle fullscreen_vertex_buffer;

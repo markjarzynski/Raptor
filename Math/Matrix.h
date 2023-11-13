@@ -37,9 +37,13 @@ public:
 
     ~mat4() {}
 
-    mat4<T>* MakeIdentity();
+    mat4<T>* Identity();
     mat4<T>* Zero();
+
     mat4<T>* FromQuaternion(const vec4<T> q);
+    mat4<T>* FromPerspective(T fov, T aspect, T near, T far);
+
+    mat4<T>* LookAt(vec3<T> eye, vec3<T> center, vec3<T> up);
 
     union
     {

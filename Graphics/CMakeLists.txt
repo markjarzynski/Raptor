@@ -5,8 +5,10 @@ add_library("Raptor::${PROJECT_NAME}" ALIAS ${PROJECT_NAME})
 
 target_sources(${PROJECT_NAME}
 PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/Buffer.cpp
     ${CMAKE_CURRENT_LIST_DIR}/CommandBuffer.cpp
     ${CMAKE_CURRENT_LIST_DIR}/CommandBufferRing.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/DescriptorSet.cpp
     ${CMAKE_CURRENT_LIST_DIR}/DescriptorSetLayout.cpp
     ${CMAKE_CURRENT_LIST_DIR}/GPUDevice.cpp
     ${CMAKE_CURRENT_LIST_DIR}/GPUProfiler.cpp
@@ -16,6 +18,7 @@ PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/ResourceCache.cpp
     ${CMAKE_CURRENT_LIST_DIR}/ResourcePool.cpp
     ${CMAKE_CURRENT_LIST_DIR}/Pipeline.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/Texture.cpp
     ${CMAKE_CURRENT_LIST_DIR}/Window.cpp
 PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/Buffer.h
