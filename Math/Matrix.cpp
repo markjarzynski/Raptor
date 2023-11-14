@@ -1,9 +1,18 @@
 #include "Matrix.h"
+#include "Matrix.inl"
+#include <math.h>
 
 namespace Raptor
 {
 namespace Math
 {
+
+template<typename T>
+mat4<T>* mat4<T>::Zero()
+{
+    _11 = _12 = _13 = _14 = _21 = _22 = _23 = _24 = _31 = _32 = _33 = _34 = _41 = _42 = _43 = _44 = static_cast<T>(0);
+    return this;
+}
 
 template<typename T>
 mat4<T>* mat4<T>::Identity()
@@ -15,14 +24,7 @@ mat4<T>* mat4<T>::Identity()
 }
 
 template<typename T>
-mat4<T>* mat4<T>::Zero()
-{
-    _11 = _12 = _13 = _14 = _21 = _22 = _23 = _24 = _31 = _32 = _33 = _34 = _41 = _42 = _43 = _44 = static_cast<T>(0);
-    return this;
-}
-
-template<typename T>
-mat4<T>* mat4<T>::FromQuaternion(const vec4<T> q)
+mat4<T>* mat4<T>::FromQuaternion(const vec4<T>& q)
 {
     T qxx = q.x * q.x;
     T qyy = q.y * q.y;
@@ -78,15 +80,15 @@ mat4<T>* mat4<T>::FromPerspective(T fov, T aspect, T near, T far)
 }
 
 template<typename T>
-mat4<T>* LookAt(vec3<T> eye, vec3<T> center, vec3<T> up)
+mat4<T>* mat4<T>::LookAt(vec3<T>& eye, vec3<T>& center, vec3<T>& up)
 {
     Identity();
 
-    vec3<T> c = center - eye;
-    c.normalize();
+    vec3<T>& c = center - eye;
+    c.Normalize();
 
-    vec3<T> a = cross(c, up);
-    vec3<T> b = cross(a, c);
+    vec3<T>& a = cross(c, up);
+    vec3<T>& b = cross(a, c);
 
     _11 = a.x;
     _12 = b.x;
@@ -106,6 +108,26 @@ mat4<T>* LookAt(vec3<T> eye, vec3<T> center, vec3<T> up)
 
     return this;
 }
+
+template<typename T>
+mat4<T> mat4<T>::operator * (const mat4<T>& rhs)
+{
+    mat4<T> result;
+
+    for (uint32 i = 0; i < 4; i++)
+    {
+        for (uint32 j = 0; j < 4; j++)
+        {
+            for (uint32 k = 0; k < 4; k++)
+            {
+                result.m[i][j] += this->m[i][k] * rhs.m[k][j];
+            }
+        }
+    }
+
+    return result;
+}
+
 
 mat4f Transform::CalcMatrix()
 {

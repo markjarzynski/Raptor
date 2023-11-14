@@ -53,7 +53,9 @@
         "sstream": "cpp",
         "string": "cpp",
         "xfacet": "cpp",
-        "xlocbuf": "cpp"
+        "xlocbuf": "cpp",
+        "cmath": "cpp",
+        "valarray": "cpp"
     },
     "editor.suggest.snippetsPreventQuickSuggestions": false,
 }

@@ -3,7 +3,7 @@
 #include <vulkan/vulkan.h>
 #include "Resources.h"
 #include "Types.h"
-#include "VectorMath.h"
+#include "Vector.h"
 #include "Matrix.h"
 
 namespace Raptor

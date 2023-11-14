@@ -21,7 +21,7 @@
 #include "File.h"
 #include "Mesh.h"
 #include "Matrix.h"
-#include "VectorMath.h"
+#include "Vector.h"
 
 // These new operators are required by EASTL
 void* __cdecl operator new[](size_t size, const char* pName, int flags, unsigned debugFlags, const char* file, int line)
@@ -883,13 +883,13 @@ void main() {
             {
                 // TODO input_handler
 
-                Raptor::Math::mat4f view;
-                //view.LookAt(eye, eye + look, up);
+                Raptor::Math::mat4f view {};
+                view.LookAt(eye, eye + look, up);
 
                 Raptor::Math::mat4f projection;
-                projection.Zero();
+                //projection.Zero();
                 //projection.Identity();
-                //projection.FromPerspective(M_PI_3, gpu_device.swapchain_width * 1.f / gpu_device.swapchain_height, 0.01f, 1000.f);
+                projection.FromPerspective(M_PI_3, gpu_device.swapchain_width * 1.f / gpu_device.swapchain_height, 0.01f, 1000.f);
 
                 Raptor::Math::mat4f view_projection = projection * view;
 
