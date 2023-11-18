@@ -35,6 +35,7 @@ add_executable(${PROJECT_NAME}
 add_subdirectory(Core)
 add_subdirectory(Debug)
 add_subdirectory(Math)
+add_subdirectory(Application)
 add_subdirectory(Graphics)
 add_subdirectory(Debug/UI)
 
@@ -55,6 +56,7 @@ PRIVATE
     "Raptor::Core"
     "Raptor::Debug"
     "Raptor::Math"
+    "Raptor::Application"
     "Raptor::Graphics"
     "Raptor::Debug::UI"
 )
