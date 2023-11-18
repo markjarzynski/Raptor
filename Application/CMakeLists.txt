@@ -5,8 +5,11 @@ add_library("Raptor::${PROJECT_NAME}" ALIAS ${PROJECT_NAME})
 
 target_sources(${PROJECT_NAME}
 PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/Input.cpp
     ${CMAKE_CURRENT_LIST_DIR}/Window.cpp
 PUBLIC
+    ${CMAKE_CURRENT_LIST_DIR}/Input.h
+    ${CMAKE_CURRENT_LIST_DIR}/Key.h
     ${CMAKE_CURRENT_LIST_DIR}/Window.h
 )
 

@@ -10,6 +10,7 @@ PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/File.cpp
     ${CMAKE_CURRENT_LIST_DIR}/Process.cpp
     ${CMAKE_CURRENT_LIST_DIR}/ResourceManager.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/TimeService.cpp
 PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/Allocator.h
     ${CMAKE_CURRENT_LIST_DIR}/Constants.h
@@ -20,6 +21,7 @@ PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/Process.h
     ${CMAKE_CURRENT_LIST_DIR}/ResourceManager.h
     ${CMAKE_CURRENT_LIST_DIR}/Service.h
+    ${CMAKE_CURRENT_LIST_DIR}/TimeService.h
     ${CMAKE_CURRENT_LIST_DIR}/Types.h
 )
 

@@ -10,6 +10,8 @@
 #include "Raptor.h"
 #include "Defines.h"
 #include "Window.h"
+#include "Input.h"
+#include "Core/TimeService.h"
 #include "GPUDevice.h"
 #include "ResourceManager.h"
 #include "GPUProfiler.h"
@@ -97,7 +99,9 @@ int main( int argc, char** argv)
     using Allocator = eastl::allocator;
     Allocator allocator {};
 
-    Raptor::Graphics::Window window {1920, 1080, "Raptor"};
+    Raptor::Application::Window window {1920, 1080, "Raptor"};
+    Raptor::Application::Input input {window};
+    Raptor::Core::Time::Init();
     Raptor::Graphics::GPUDevice gpu_device {window, allocator};
     Raptor::Core::ResourceManager resource_manager {allocator, nullptr};
     Raptor::Graphics::GPUProfiler gpu_profiler {allocator, 100};
@@ -850,6 +854,7 @@ void main() {
     buffers_data.clear();
     buffers_size.clear();
 
+    int64 begin_frame_tick = Raptor::Core::Time::Now();
 
     Raptor::Math::vec3f eye {0.f, 2.f, 2.f};
     Raptor::Math::vec3f look {0.f, 0.f, -1.f};
@@ -873,6 +878,10 @@ void main() {
             window.framebufferResized = false;
         }
 
+        const int64 current_tick = Raptor::Core::Time::Now();
+        float delta_time = (float)Raptor::Core::Time::DeltaSeconds(begin_frame_tick, current_tick);
+        begin_frame_tick = current_tick;
+
         // TODO
 
         Raptor::Math::mat4f global_model {};
@@ -882,6 +891,15 @@ void main() {
             if (cb_data)
             {
                 // TODO input_handler
+
+                if (input.KeyPress(Raptor::Application::Key::KEY_W))
+                    eye = eye + look * 5.f * delta_time;
+                if (input.KeyPress(Raptor::Application::Key::KEY_S))
+                    eye = eye - look * 5.f * delta_time;
+                if (input.KeyPress(Raptor::Application::Key::KEY_D))
+                    eye = eye + right * 5.f * delta_time;
+                if (input.KeyPress(Raptor::Application::Key::KEY_A))
+                    eye = eye - right * 5.f * delta_time;
 
                 Raptor::Math::mat4f view {};
                 view.LookAt(eye, eye + look, up);

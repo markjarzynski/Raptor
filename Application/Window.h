@@ -8,7 +8,7 @@
 
 namespace Raptor
 {
-namespace Graphics
+namespace Application
 {
 class Window
 {
@@ -39,5 +39,5 @@ public:
 
 static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
 
-} // namespace Graphics
+} // namespace Application
 } // namespace Raptor

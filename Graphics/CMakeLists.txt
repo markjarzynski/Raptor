@@ -19,7 +19,6 @@ PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/ResourcePool.cpp
     ${CMAKE_CURRENT_LIST_DIR}/Pipeline.cpp
     ${CMAKE_CURRENT_LIST_DIR}/Texture.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/Window.cpp
 PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/Buffer.h
     ${CMAKE_CURRENT_LIST_DIR}/CommandBuffer.h
@@ -40,7 +39,6 @@ PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/Pipeline.h
     ${CMAKE_CURRENT_LIST_DIR}/Sampler.h
     ${CMAKE_CURRENT_LIST_DIR}/Texture.h
-    ${CMAKE_CURRENT_LIST_DIR}/Window.h
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -62,4 +60,5 @@ PRIVATE
     "Raptor::Core"
     "Raptor::Debug"
     "Raptor::Math"
+    "Raptor::Application"
 )

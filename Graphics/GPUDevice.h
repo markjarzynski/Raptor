@@ -27,15 +27,17 @@
 #include "Types.h"
 #include "Window.h"
 
-
-
-
 #define VULKAN_DEBUG
 
 namespace Raptor
 {
 namespace Graphics
 {
+
+using Allocator = eastl::allocator;
+template <typename T, typename Allocator> using Vector = eastl::vector<T, Allocator>;
+using Raptor::Application::Window;
+
 enum class QueueType
 {
     Graphics, Compute, CopyTransfer, Max
@@ -45,11 +47,6 @@ class CommandBuffer;
 
 class GPUDevice
 {
-    using Allocator = eastl::allocator;
-
-    template <typename T, typename Allocator>
-    using Vector = eastl::vector<T, Allocator>;
-
 public:
 
     GPUDevice(Window& window, Allocator& allocator, uint32 flags = 0, uint32 gpu_time_queries_per_frame = 32);

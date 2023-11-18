@@ -2,7 +2,7 @@
 
 namespace Raptor
 {
-namespace Graphics
+namespace Application
 {
 
 Window::Window (int width, int height, eastl::string name)
@@ -30,5 +30,5 @@ static void framebufferResizeCallback(GLFWwindow* window, int width, int height)
     win->framebufferResized = true;
 }
 
-} // namespace Graphics
+} // namespace Application
 } // namespace Raptor

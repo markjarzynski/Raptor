@@ -32,13 +32,8 @@ namespace Graphics
 {
 
 using eastl::clamp;
-
-template<typename Key, typename T>
-using HashMap = eastl::hash_map<Key, T>;
-
-template<typename Key, typename T>
-using Pair = eastl::pair<Key, T>;
-
+template<typename Key, typename T> using HashMap = eastl::hash_map<Key, T>;
+template<typename Key, typename T> using Pair = eastl::pair<Key, T>;
 using EA::StdC::Snprintf;
 
 static const char* s_requested_layers[] = {
