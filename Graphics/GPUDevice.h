@@ -127,6 +127,8 @@ public:
 
     // GPU Timings
     uint32 GetGPUTimestamps(GPUTimestamp* out_timestamps);
+    void PushGPUTimestamp(CommandBuffer* command_buffer, const char* name);
+    void PopGPUTimestamp(CommandBuffer* command_buffer);
 
     // Destroy Instant
     void DestroyBufferInstant(ResourceHandle buffer);
@@ -270,6 +272,30 @@ public:
         GPUTimestampReset               = 0x1 << 4,
     };
     uint32 m_uFlags = 0u;
+
+    ShaderState* AccessShaderState(ShaderStateHandle handle);
+    const ShaderState* AccessShaderState(ShaderStateHandle handle) const;
+
+    Texture* AccessTexture(TextureHandle handle);
+    const Texture* AccessTexture(TextureHandle handle) const;
+
+    Buffer* AccessBuffer(BufferHandle handle);
+    const Buffer* AccessBuffer(BufferHandle handle) const;
+
+    Pipeline* AccessPipeline(PipelineHandle handle);
+    const Pipeline* AccessPipeline(PipelineHandle handle) const;
+
+    Sampler* AccessSampler(SamplerHandle handle);
+    const Sampler* AccessSampler(SamplerHandle handle) const;
+
+    DescriptorSetLayout* AccessDescriptorSetLayout(DescriptorSetLayoutHandle handle);
+    const DescriptorSetLayout* AccessDescriptorSetLayout(DescriptorSetLayoutHandle handle) const;
+
+    DescriptorSet* AccessDescriptorSet(DescriptorSetHandle handle);
+    const DescriptorSet* AccessDescriptorSet(DescriptorSetHandle handle) const;
+
+    RenderPass* AccessRenderPass(RenderPassHandle handle);
+    const RenderPass* AccessRenderPass(RenderPassHandle handle) const;
 
 }; // class GPUDevice
 

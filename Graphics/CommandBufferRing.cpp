@@ -82,7 +82,7 @@ CommandBuffer* CommandBufferRing::GetCommandBuffer(uint32 frame, bool begin)
     {
         cb->Reset();
 
-        VkCommandBufferBeginInfo begin_info;
+        VkCommandBufferBeginInfo begin_info {};
         begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         VkResult result = vkBeginCommandBuffer(cb->vk_command_buffer, &begin_info);

@@ -55,7 +55,8 @@
         "xfacet": "cpp",
         "xlocbuf": "cpp",
         "cmath": "cpp",
-        "valarray": "cpp"
+        "valarray": "cpp",
+        "*.rh": "cpp"
     },
     "editor.suggest.snippetsPreventQuickSuggestions": false,
 }

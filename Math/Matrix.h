@@ -7,6 +7,40 @@ namespace Math
 {
 
 template<typename T>
+class mat3
+{
+public:
+    mat3()
+        : _11(1), _12(0), _13(0),
+          _21(0), _22(1), _23(0),
+          _31(0), _32(0), _33(1) {}
+    
+    mat3(vec3<T> v0, vec3<T> v1, vec3<T> v2) 
+        : v[0](v0), v[1](v1), v[2](v2), v[3](v3) {}
+    
+    mat3(T* m)
+    {
+        for (uint8 i = 0; i < 9; i++)
+        {
+            this->i[i] = m[i];
+        }
+    }
+
+    ~mat3(){}
+
+    T Determinant();
+
+    union
+    {
+        T i[9];
+        T m[3][3];
+        vec3<T> v[3];
+        struct {T _11, _12, _13, _21, _22, _23, _31, _32, _33;};
+    };
+
+}; // class mat3
+
+template<typename T>
 class mat4
 {
 public:
@@ -15,6 +49,12 @@ public:
           _21(0), _22(1), _23(0), _24(0), 
           _31(0), _32(0), _33(1), _34(0), 
           _41(0), _42(0), _43(0), _44(1) {}
+
+    mat4(T a, T b, T c, T d, T e, T f, T g, T h, T i, T j, T k, T l, T m, T n, T o, T p)
+        : _11(a), _12(b), _13(c), _14(d), 
+          _21(e), _22(f), _23(g), _24(h), 
+          _31(i), _32(j), _33(k), _34(l), 
+          _41(m), _42(n), _43(o), _44(p) {}
     
     mat4(vec4<T> v0, vec4<T> v1, vec4<T> v2, vec4<T> v3) 
         : v[0](v0), v[1](v1), v[2](v2), v[3](v3) {}
@@ -43,6 +83,13 @@ public:
     mat4<T>* Zero();
     mat4<T>* Identity();
 
+    mat4<T> Transpose();
+    mat4<T> Inverse();
+    mat4<T> Adjugate();
+    T Determinant();
+
+    mat3<T>* SubMat3(uint32 i, uint32 j);
+
     mat4<T>* FromQuaternion(const vec4<T>& q);
     mat4<T>* FromPerspective(T fov, T aspect, T near_, T far_);
 
@@ -60,8 +107,8 @@ public:
 
 }; // class mat4
 
-// template<typename T>
-// mat4<T>* operator * (const mat4<T>& lhs, const mat4<T>& rhs);
+template<typename T> mat4<T> operator * (const mat4<T>& lhs, T rhs);
+template<typename T> mat4<T> operator * (T lhs, const mat4<T>& rhs);
 
 typedef mat4<float> mat4f;
 typedef mat4<double> mat4d;

@@ -11,6 +11,11 @@ template mat4<float> mat4<float>::operator * (const mat4<float>& rhs);
 template mat4<float>* mat4<float>::Zero();
 template mat4<float>* mat4<float>::Identity();
 
+template mat4<float> mat4<float>::Transpose();
+template mat4<float> mat4<float>::Inverse();
+template mat4<float> mat4<float>::Adjugate();
+template float mat4<float>::Determinant();
+
 template mat4<float>* mat4<float>::FromQuaternion(const vec4<float>& q);
 template mat4<float>* mat4<float>::FromPerspective(float fov, float aspect, float near_, float far_);
 

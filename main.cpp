@@ -887,8 +887,6 @@ void main() {
                 view.LookAt(eye, eye + look, up);
 
                 Raptor::Math::mat4f projection;
-                //projection.Zero();
-                //projection.Identity();
                 projection.FromPerspective(M_PI_3, gpu_device.swapchain_width * 1.f / gpu_device.swapchain_height, 0.01f, 1000.f);
 
                 Raptor::Math::mat4f view_projection = projection * view;
@@ -902,17 +900,65 @@ void main() {
                 memcpy(cb_data, &uniform_data, sizeof(UniformData));
 
                 gpu_device.UnmapBuffer(cb_map);
-
-
-
             }
 
+            //if (!window.minimized)
+            {
+                Raptor::Graphics::CommandBuffer* commands = gpu_device.GetCommandBuffer(Raptor::Graphics::QueueType::Graphics, true);
+                commands->PushMarker("Frame");
+                commands->Clear(0.3f, 0.9f, 0.3f, 1.f);
+                commands->ClearDepthStencil(1.f, 0);
+                commands->BindPass(gpu_device.GetSwapchainPass());
+                commands->BindPipeline(cube_pipeline);
+                commands->SetScissor(nullptr);
+                commands->SetViewport(nullptr);
+
+                for (uint32 iMesh = 0; iMesh < mesh_draws.size(); iMesh++)
+                {
+                    Raptor::Graphics::MeshDraw* mesh_draw = mesh_draws[iMesh];
+                    mesh_draw->material_data.model_inv = (global_model * mesh_draw->material_data.model).Transpose().Inverse();
+
+                    Raptor::Graphics::MapBufferParams material_map = {mesh_draw->material_buffer, 0, 0};
+                    Raptor::Graphics::MaterialData* material_buffer_data = (Raptor::Graphics::MaterialData*)gpu_device.MapBuffer(material_map);
+
+                    memcpy(material_buffer_data, &mesh_draw->material_data, sizeof(Raptor::Graphics::MaterialData));
+
+                    commands->BindVertexBuffer(mesh_draw->position_buffer, 0, mesh_draw->position_offset);
+                    commands->BindVertexBuffer(mesh_draw->normal_buffer, 2, mesh_draw->normal_offset);
+
+                    if (mesh_draw->material_data.flags & Raptor::Graphics::MaterialFeatures::TangentVertexAttribute)
+                        commands->BindVertexBuffer(mesh_draw->tangent_buffer, 1, mesh_draw->tangent_offset);
+                    else
+                        commands->BindVertexBuffer(dummy_attribute_buffer, 1, 0);
+
+                    if (mesh_draw->material_data.flags & Raptor::Graphics::MaterialFeatures::TexcoordVertexAttribute)
+                        commands->BindVertexBuffer(mesh_draw->texcoord_buffer, 3, mesh_draw->texcoord_offset);
+                    else
+                        commands->BindVertexBuffer(dummy_attribute_buffer, 3, 0);
+
+                    commands->BindIndexBuffer(mesh_draw->index_buffer, mesh_draw->index_offset, mesh_draw->vk_index_type);
+                    commands->BindDescriptorSet(&mesh_draw->descriptor_set, 1, nullptr, 0);
+                    commands->DrawIndexed(Raptor::Graphics::TopologyType::Triangle, mesh_draw->count, 1, 0, 0, 0);
+                }
+
+                //debugUI.Render();
+
+                commands->PopMarker();
+                gpu_profiler.Update(gpu_device);
+
+                gpu_device.QueueCommandBuffer(commands);
+                gpu_device.Present();
+            }
+            //else
+            {
+                //debugUI.Render();
+            }
+            
         }
 
 
 
         //debugUI.Update();
-        //debugUI.Render();
 
         // TODO
     }

@@ -8,6 +8,14 @@ namespace Math
 {
 
 template<typename T>
+T mat3<T>::Determinant()
+{
+    return _11 * (_22*_33 - _23*_32) -
+           _21 * (_12*_33 - _13*_32) +
+           _31 * (_12*_23 - _13*_22);
+}
+
+template<typename T>
 mat4<T>* mat4<T>::Zero()
 {
     _11 = _12 = _13 = _14 = _21 = _22 = _23 = _24 = _31 = _32 = _33 = _34 = _41 = _42 = _43 = _44 = static_cast<T>(0);
@@ -22,6 +30,85 @@ mat4<T>* mat4<T>::Identity()
 
     return this;
 }
+
+template<typename T>
+mat4<T> mat4<T>::Transpose()
+{
+    mat4<T> transpose {_11, _21, _31, _41, _12, _22, _32, _42, _13, _23, _33, _43, _14, _24, _34, _44};
+    return transpose;
+}
+
+template<typename T>
+mat4<T> mat4<T>::Inverse()
+{
+    T det = Determinant();
+    mat4<T> adjugate = Adjugate();
+
+    return adjugate * (1.f / det);
+}
+
+template<typename T>
+T mat4<T>::Determinant()
+{
+    return _11 * (_22*_33*_44 + _23*_34*_42 + _24*_32*_43 - _24*_33*_42 - _23*_32*_44 - _22*_34*_43) -
+           _21 * (_12*_33*_44 + _13*_34*_42 + _14*_32*_43 - _13*_33*_42 - _13*_32*_44 - _12*_34*_43) +
+           _31 * (_12*_23*_44 + _13*_24*_42 + _14*_22*_43 - _14*_23*_42 - _13*_22*_44 - _12*_24*_43) -
+           _41 * (_12*_23*_34 + _13*_24*_32 + _14*_22*_33 - _14*_23*_32 - _13*_22*_34 - _12*_24*_33);
+}
+
+template<typename T>
+mat4<T> mat4<T>::Adjugate()
+{
+    mat4<T> out;// {};
+
+    out._11 = SubMat3(1,1)->Determinant();
+    out._12 = SubMat3(1,2)->Determinant();
+    out._13 = SubMat3(1,3)->Determinant();
+    out._14 = SubMat3(1,4)->Determinant();
+
+    out._21 = SubMat3(2,1)->Determinant();
+    out._22 = SubMat3(2,2)->Determinant();
+    out._23 = SubMat3(2,3)->Determinant();
+    out._24 = SubMat3(2,4)->Determinant();
+
+    out._31 = SubMat3(3,1)->Determinant();
+    out._32 = SubMat3(3,2)->Determinant();
+    out._33 = SubMat3(3,3)->Determinant();
+    out._34 = SubMat3(3,4)->Determinant();
+
+    out._41 = SubMat3(4,1)->Determinant();
+    out._42 = SubMat3(4,2)->Determinant();
+    out._43 = SubMat3(4,3)->Determinant();
+    out._44 = SubMat3(4,4)->Determinant();
+
+    return out;
+}
+
+// Returns a 3x3 Matrix with the i row and j column removed.
+template<typename T>
+mat3<T>* mat4<T>::SubMat3(uint32 i, uint32 j)
+{
+    mat3<T>* out = new mat3<T>();
+
+    for (uint32 m = 0, s = 0; m < 4; m++)
+    {
+        if (m + 1 != i)
+        {
+            for (uint32 n = 0, t = 0; n < 4; n++)
+            {
+                if (n + 1 != j)
+                {
+                    out->m[s][t] = this->m[m][n];
+                    t++;
+                }
+            }
+            s++;
+        }
+    }
+
+    return out;
+}
+
 
 template<typename T>
 mat4<T>* mat4<T>::FromQuaternion(const vec4<T>& q)
@@ -126,6 +213,50 @@ mat4<T> mat4<T>::operator * (const mat4<T>& rhs)
     }
 
     return result;
+}
+
+template<typename T>
+mat4<T> operator * (const mat4<T>& lhs, T rhs)
+{
+    return mat4<T>(
+        lhs.i[0]  * rhs,
+        lhs.i[1]  * rhs,
+        lhs.i[2]  * rhs,
+        lhs.i[3]  * rhs,
+        lhs.i[4]  * rhs,
+        lhs.i[5]  * rhs,
+        lhs.i[6]  * rhs,
+        lhs.i[7]  * rhs,
+        lhs.i[8]  * rhs,
+        lhs.i[9]  * rhs,
+        lhs.i[10] * rhs,
+        lhs.i[11] * rhs,
+        lhs.i[12] * rhs,
+        lhs.i[13] * rhs,
+        lhs.i[14] * rhs,
+        lhs.i[15] * rhs);
+}
+
+template<typename T>
+mat4<T> operator * (T lhs, const mat4<T>& rhs)
+{
+    return mat4<T>(
+        lhs * rhs.i[0],
+        lhs * rhs.i[1],
+        lhs * rhs.i[2],
+        lhs * rhs.i[3],
+        lhs * rhs.i[4],
+        lhs * rhs.i[5],
+        lhs * rhs.i[6],
+        lhs * rhs.i[7],
+        lhs * rhs.i[8],
+        lhs * rhs.i[9],
+        lhs * rhs.i[10],
+        lhs * rhs.i[11],
+        lhs * rhs.i[12],
+        lhs * rhs.i[13],
+        lhs * rhs.i[14],
+        lhs * rhs.i[15]);
 }
 
 

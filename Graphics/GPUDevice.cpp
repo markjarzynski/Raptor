@@ -402,7 +402,7 @@ void GPUDevice::CreatePhysicalDevices()
     {
         pfnSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(vk_device, "vkSetDebugUtilsObjectNameEXT");
         pfnCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetDeviceProcAddr(vk_device, "vkCmdBeginDebugUtilsLabelEXT");
-        pfnCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetDeviceProcAddr(vk_device, "vkCmdEndDebugUtilsLabelExt");
+        pfnCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetDeviceProcAddr(vk_device, "vkCmdEndDebugUtilsLabelEXT");
     }
 
     vkGetDeviceQueue(vk_device, main_queue_family_index, 0, &vk_queue);
@@ -708,7 +708,7 @@ BufferHandle GPUDevice::CreateBuffer(const CreateBufferParams& params)
     if (handle == InvalidBuffer)
         return handle;
 
-    Buffer* buffer = (Buffer*)buffers.accessResource(handle);
+    Buffer* buffer = AccessBuffer(handle);
 
     buffer->name = params.name;
     buffer->size = params.size;
@@ -841,7 +841,7 @@ TextureHandle GPUDevice::CreateTexture(const CreateTextureParams& params)
     if (handle == InvalidTexture)
         return handle;
 
-    Texture* texture = (Texture*)textures.accessResource(handle);
+    Texture* texture = AccessTexture(handle);
 
     Raptor::Graphics::CreateTexture(*this, params, handle, texture);
 
@@ -896,6 +896,7 @@ TextureHandle GPUDevice::CreateTexture(const CreateTextureParams& params)
 
         VkSubmitInfo submit_info {};
         submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submit_info.commandBufferCount = 1;
         submit_info.pCommandBuffers = &command_buffer->vk_command_buffer;
 
         vkQueueSubmit(vk_queue, 1, &submit_info, VK_NULL_HANDLE);
@@ -928,8 +929,8 @@ PipelineHandle GPUDevice::CreatePipeline(const CreatePipelineParams& params)
         return handle;
     }
 
-    Pipeline* pipeline = (Pipeline*)pipelines.accessResource(handle);
-    ShaderState* shader_state = (ShaderState*)shaders.accessResource(shader_state_handle);
+    Pipeline* pipeline = AccessPipeline(handle);
+    ShaderState* shader_state = AccessShaderState(shader_state_handle);
 
     pipeline->shader_state = shader_state_handle;
 
@@ -937,7 +938,7 @@ PipelineHandle GPUDevice::CreatePipeline(const CreatePipelineParams& params)
 
     for (uint32 i = 0; i < params.num_active_layouts; i++)
     {
-        pipeline->descriptor_set_layout[i] = (DescriptorSetLayout*)descriptor_set_layouts.accessResource(params.descriptor_set_layout[i]);
+        pipeline->descriptor_set_layout[i] = AccessDescriptorSetLayout(params.descriptor_set_layout[i]);
         pipeline->descrptor_set_layout_handle[i] = params.descriptor_set_layout[i];
         
         vk_layouts[i] = pipeline->descriptor_set_layout[i]->vk_descriptor_set_layout;
@@ -1157,7 +1158,7 @@ SamplerHandle GPUDevice::CreateSampler(const CreateSamplerParams& params)
     if (handle == InvalidSampler)
         return handle;
 
-    Sampler* sampler = (Sampler*)samplers.accessResource(handle);
+    Sampler* sampler = AccessSampler(handle);
 
     sampler->name = params.name;
 
@@ -1195,7 +1196,7 @@ DescriptorSetLayoutHandle GPUDevice::CreateDescriptorSetLayout(const CreateDescr
     if (handle == InvalidDescriptorSetLayout)
         return handle;
     
-    DescriptorSetLayout* descriptor_set_layout = (DescriptorSetLayout*)descriptor_set_layouts.accessResource(handle);
+    DescriptorSetLayout* descriptor_set_layout = AccessDescriptorSetLayout(handle);
 
     descriptor_set_layout->num_bindings = (uint16) params.num_bindings;
     uint8* memory = (uint8*)allocator->allocate((sizeof(VkDescriptorSetLayoutBinding) + sizeof(DescriptorBinding)) * params.num_bindings);
@@ -1260,7 +1261,7 @@ static void FillWriteDescriptorSets(GPUDevice& gpu_device, const DescriptorSetLa
                 descriptor_write[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
                 TextureHandle texture_handle = resources[i];
-                Texture* texture_data = (Texture*)gpu_device.textures.accessResource(texture_handle);
+                Texture* texture_data = gpu_device.AccessTexture(texture_handle);
 
                 image_info[i].sampler = vk_default_sampler;
                 if (texture_data->sampler)
@@ -1268,7 +1269,7 @@ static void FillWriteDescriptorSets(GPUDevice& gpu_device, const DescriptorSetLa
                 
                 if (samplers[i] != InvalidSampler)
                 {
-                    Sampler* sampler = (Sampler*)gpu_device.samplers.accessResource(samplers[i]);
+                    Sampler* sampler = gpu_device.AccessSampler(samplers[i]);
                 }
 
                 image_info[i].imageLayout = TextureFormat::HasDepthOrStencil(texture_data->vk_format) ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1283,7 +1284,7 @@ static void FillWriteDescriptorSets(GPUDevice& gpu_device, const DescriptorSetLa
                 descriptor_write[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 
                 TextureHandle texture_handle = resources[i];
-                Texture* texture_data = (Texture*)gpu_device.textures.accessResource(texture_handle);
+                Texture* texture_data = gpu_device.AccessTexture(texture_handle);
 
                 image_info[i].sampler = nullptr;
                 image_info[i].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
@@ -1296,13 +1297,13 @@ static void FillWriteDescriptorSets(GPUDevice& gpu_device, const DescriptorSetLa
             case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
             {
                 BufferHandle buffer_handle = resources[i];
-                Buffer* buffer = (Buffer*)gpu_device.buffers.accessResource(buffer_handle);
+                Buffer* buffer = gpu_device.AccessBuffer(buffer_handle);
 
                 descriptor_write[i].descriptorType = (buffer->usage == ResourceUsageType::Dynamic) ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
                 if (buffer->parent_buffer != InvalidBuffer)
                 {
-                    Buffer* parent_buffer = (Buffer*)gpu_device.buffers.accessResource(buffer->parent_buffer);
+                    Buffer* parent_buffer = gpu_device.AccessBuffer(buffer->parent_buffer);
 
                     buffer_info[i].buffer = parent_buffer->vk_buffer;
                 }
@@ -1321,13 +1322,13 @@ static void FillWriteDescriptorSets(GPUDevice& gpu_device, const DescriptorSetLa
             case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
             {
                 BufferHandle buffer_handle = resources[i];
-                Buffer* buffer = (Buffer*)gpu_device.buffers.accessResource(buffer_handle);
+                Buffer* buffer = gpu_device.AccessBuffer(buffer_handle);
 
                 descriptor_write[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 
                 if (buffer->parent_buffer != InvalidBuffer)
                 {
-                    Buffer* parent_buffer = (Buffer*)gpu_device.buffers.accessResource(buffer->parent_buffer);
+                    Buffer* parent_buffer = gpu_device.AccessBuffer(buffer->parent_buffer);
                     
                     buffer_info[i].buffer = parent_buffer->vk_buffer;
                 }
@@ -1354,8 +1355,48 @@ static void FillWriteDescriptorSets(GPUDevice& gpu_device, const DescriptorSetLa
 //------------------------------------------------------------------------------
 DescriptorSetHandle GPUDevice::CreateDescriptorSet(const CreateDescriptorSetParams& params)
 {
-    // TODO
-    return 0;
+    DescriptorSetHandle handle = descriptor_sets.obtainResource();
+    if (handle == InvalidDescriptorSet)
+        return handle;
+
+    DescriptorSet* descriptor_set = AccessDescriptorSet(handle);
+    const DescriptorSetLayout* descriptor_set_layout = AccessDescriptorSetLayout(params.layout);
+
+    VkDescriptorSetAllocateInfo alloc_info {};
+    alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    alloc_info.descriptorPool = vk_descriptor_pool;
+    alloc_info.descriptorSetCount = 1;
+    alloc_info.pSetLayouts = &descriptor_set_layout->vk_descriptor_set_layout;
+
+    VkResult result = vkAllocateDescriptorSets(vk_device, &alloc_info, &descriptor_set->vk_descriptor_set);
+    ASSERT(result == VK_SUCCESS);
+
+    uint8* memory = (uint8*)allocator->allocate((sizeof(ResourceHandle) + sizeof(SamplerHandle) + sizeof(uint16)) * params.num_resources);
+    descriptor_set->resources = (ResourceHandle*)memory;
+    descriptor_set->samplers = (SamplerHandle*) (memory + sizeof(ResourceHandle) * params.num_resources);
+    descriptor_set->bindings = (uint16*)(memory + (sizeof(ResourceHandle) + sizeof(SamplerHandle)) * params.num_resources);
+    descriptor_set->num_resources = params.num_resources;
+    descriptor_set->layout = descriptor_set_layout;
+
+    VkWriteDescriptorSet descriptor_write[8];
+    VkDescriptorBufferInfo buffer_info[8];
+    VkDescriptorImageInfo image_info[8];
+
+    Sampler* vk_default_sampler = AccessSampler(default_sampler);
+
+    uint32 num_resources = params.num_resources;
+    FillWriteDescriptorSets(*this, descriptor_set_layout, descriptor_set->vk_descriptor_set, descriptor_write, buffer_info, image_info, vk_default_sampler->vk_sampler, num_resources, params.resources, params.samplers, params.bindings);
+
+    for (uint32 i = 0; i < params.num_resources; i++)
+    {
+        descriptor_set->resources[i] = params.resources[i];
+        descriptor_set->samplers[i] = params.samplers[i];
+        descriptor_set->bindings[i] = params.bindings[i];
+    }
+
+    vkUpdateDescriptorSets(vk_device, params.num_resources, descriptor_write, 0, nullptr);
+
+    return handle;
 }
 
 //------------------------------------------------------------------------------
@@ -1376,7 +1417,7 @@ static void CreateSwapchainPass(GPUDevice& gpu_device, const CreateRenderPassPar
     color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
     VkAttachmentDescription depth_attachment {};
-    Texture* depth_texture = (Texture*)gpu_device.textures.accessResource(gpu_device.depth_texture);
+    Texture* depth_texture = gpu_device.AccessTexture(gpu_device.depth_texture);
     depth_attachment.format = depth_texture->vk_format;
     depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
     depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -1473,13 +1514,13 @@ static RenderPassOutput CreateRenderPassOutput(GPUDevice& gpu_device, const Crea
 
     for (uint32 i = 0; i < params.num_render_targets; i++)
     {
-        Texture* texture = (Texture*)gpu_device.textures.accessResource(params.output_textures[i]);
+        Texture* texture = gpu_device.AccessTexture(params.output_textures[i]);
         output.color(texture->vk_format);
     }
 
     if (params.depth_stencil_texture != InvalidTexture)
     {
-        Texture* texture = (Texture*)gpu_device.textures.accessResource(params.depth_stencil_texture);
+        Texture* texture = gpu_device.AccessTexture(params.depth_stencil_texture);
         output.depth(texture->vk_format);   
     }
 
@@ -1648,13 +1689,13 @@ static void CreateFramebuffer(GPUDevice& gpu_device, RenderPass* render_pass, co
     uint32 active_attachments = 0;
     for (; active_attachments < num_render_targets; active_attachments++)
     {
-        Texture* texture = (Texture*)gpu_device.textures.accessResource(output_textures[active_attachments]);
+        Texture* texture = gpu_device.AccessTexture(output_textures[active_attachments]);
         framebuffer_attachments[active_attachments] = texture->vk_image_view;
     }
 
     if (depth_stencil_texture != InvalidTexture)
     {
-        Texture* depth_texture = (Texture*)gpu_device.textures.accessResource(depth_stencil_texture);
+        Texture* depth_texture = gpu_device.AccessTexture(depth_stencil_texture);
         framebuffer_attachments[active_attachments++] = depth_texture->vk_image_view;
     }
 
@@ -1672,7 +1713,7 @@ RenderPassHandle GPUDevice::CreateRenderPass(const CreateRenderPassParams& param
     if (handle == InvalidRenderPass)
         return handle;
 
-    RenderPass* render_pass = (RenderPass*)render_passes.accessResource(handle);
+    RenderPass* render_pass = AccessRenderPass(handle);
     render_pass->type = params.type;
     render_pass->dispatchX = 0;
     render_pass->dispatchY = 0;
@@ -1686,7 +1727,7 @@ RenderPassHandle GPUDevice::CreateRenderPass(const CreateRenderPassParams& param
 
     for ( uint32 i = 0; i < params.num_render_targets; ++i )
     {
-        Texture* texture = (Texture*)textures.accessResource(params.output_textures[i]);
+        Texture* texture = AccessTexture(params.output_textures[i]);
         render_pass->width = texture->width;
         render_pass->height = texture->height;
 
@@ -1735,7 +1776,7 @@ ShaderStateHandle GPUDevice::CreateShaderState( const CreateShaderStateParams& p
 
     uint32 compiled_shaders = 0;
 
-    ShaderState* shader_state = (ShaderState*)shaders.accessResource(handle);
+    ShaderState* shader_state = AccessShaderState(handle);
     shader_state->graphics_pipeline = true;
     shader_state->active_shaders = 0;
 
@@ -1818,7 +1859,7 @@ void GPUDevice::DestroyPipeline(PipelineHandle handle)
     if (handle < pipelines.poolSize)
     {
         resource_deletion_queue.push_back({ResourceDeletionType::Pipeline, handle, current_frame});
-        Pipeline* pipeline = (Pipeline*)pipelines.accessResource(handle);
+        Pipeline* pipeline = AccessPipeline(handle);
         DestroyShaderState(pipeline->shader_state);
     }
     else
@@ -1880,7 +1921,7 @@ void GPUDevice::QueryTexture(TextureHandle handle, TextureDescription& out_descr
     if (handle == InvalidTexture)
         return;
 
-    const Texture* texture = (Texture*)textures.accessResource(handle);
+    const Texture* texture = AccessTexture(handle);
     out_description.width = texture->width;
     out_description.height = texture->height;
     out_description.depth = texture->depth;
@@ -1901,7 +1942,7 @@ void GPUDevice::QuerySampler(SamplerHandle handle, SamplerDescription& out_descr
     if (handle == InvalidSampler)
         return;
 
-    const Sampler* sampler = (Sampler*)samplers.accessResource(handle);
+    const Sampler* sampler = AccessSampler(handle);
     out_description.address_mode_u = sampler->address_mode_u;
     out_description.address_mode_v = sampler->address_mode_v;
     out_description.address_mode_w = sampler->address_mode_w;
@@ -1920,7 +1961,7 @@ void GPUDevice::QueryShaderState(ShaderStateHandle handle, ShaderStateDescriptio
 //------------------------------------------------------------------------------
 const RenderPassOutput& GPUDevice::GetRenderPassOutput(RenderPassHandle handle) const
 {
-    const RenderPass* render_pass = (RenderPass*)render_passes.accessResource(handle);
+    const RenderPass* render_pass = AccessRenderPass(handle);
     return render_pass->output;
 }
 
@@ -1958,7 +1999,7 @@ void GPUDevice::ResizeSwapchain()
         return;
     }
 
-    RenderPass* vk_swapchain_pass = (RenderPass*)render_passes.accessResource(swapchain_pass);
+    RenderPass* vk_swapchain_pass = AccessRenderPass(swapchain_pass);
     vkDestroyRenderPass(vk_device, vk_swapchain_pass->vk_render_pass, vk_allocation_callbacks);
 
     DestroySwapchain();
@@ -1968,9 +2009,9 @@ void GPUDevice::ResizeSwapchain()
     CreateSwapchain();
 
     TextureHandle delete_texture = textures.obtainResource();
-    Texture* vk_delete_texture = (Texture*)textures.accessResource(delete_texture);
+    Texture* vk_delete_texture = AccessTexture(delete_texture);
     vk_delete_texture->handle = delete_texture;
-    Texture* vk_depth_texture = (Texture*)textures.accessResource(depth_texture);
+    Texture* vk_depth_texture = AccessTexture(depth_texture);
     ResizeTexture(*this, vk_depth_texture, vk_delete_texture, swapchain_width, swapchain_height, 1);
 
     DestroyTexture(delete_texture);
@@ -1989,12 +2030,12 @@ void* GPUDevice::MapBuffer(const MapBufferParams& params)
     if (params.buffer == InvalidBuffer)
         return nullptr;
 
-    Buffer* buffer = (Buffer*)buffers.accessResource(params.buffer);
+    Buffer* buffer = AccessBuffer(params.buffer);
 
     if (buffer->parent_buffer == dynamic_buffer)
     {
         buffer->global_offset = dynamic_allocated_size;
-        return nullptr; // TODO
+        return allocator->allocate((params.size == 0) ? buffer->size : params.size);
     }
 
     void* data;
@@ -2007,7 +2048,7 @@ void GPUDevice::UnmapBuffer(const MapBufferParams& params)
     if (params.buffer == InvalidBuffer)
         return;
     
-    Buffer* buffer = (Buffer*)buffers.accessResource(params.buffer);
+    Buffer* buffer = AccessBuffer(params.buffer);
     if (buffer->parent_buffer == dynamic_buffer)
         return;
 
@@ -2065,7 +2106,24 @@ void GPUDevice::SetResourceName(VkObjectType type, uint64 handle, const char* na
     pfnSetDebugUtilsObjectNameEXT(vk_device, &name_info);
 }
 
+//------------------------------------------------------------------------------
+void GPUDevice::PushMarker(VkCommandBuffer command_buffer, const char* name)
+{
+    VkDebugUtilsLabelEXT label {};
+    label.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+    label.pLabelName = name;
+    label.color[0] = 1.f;
+    label.color[1] = 1.f;
+    label.color[2] = 1.f;
+    label.color[3] = 1.f;
+    pfnCmdBeginDebugUtilsLabelEXT(command_buffer, &label);
+}
 
+//------------------------------------------------------------------------------
+void GPUDevice::PopMarker(VkCommandBuffer command_buffer)
+{
+    pfnCmdEndDebugUtilsLabelEXT(command_buffer);
+}
 
 //------------------------------------------------------------------------------
 void GPUDevice::QueueCommandBuffer(CommandBuffer* command_buffer)
@@ -2209,6 +2267,27 @@ uint32 GPUDevice::GetGPUTimestamps(GPUTimestamp* out_timestamps)
 }
 
 //------------------------------------------------------------------------------
+void GPUDevice::PushGPUTimestamp(CommandBuffer* command_buffer, const char* name)
+{
+    if (!(m_uFlags & Flags::EnableGPUTimeQueries))
+        return;
+    
+    uint32 query_index = gpu_timestamp_manager->push(current_frame, name);
+    vkCmdWriteTimestamp(command_buffer->vk_command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, vk_query_pool, query_index);
+
+}
+
+//------------------------------------------------------------------------------
+void GPUDevice::PopGPUTimestamp(CommandBuffer* command_buffer)
+{
+    if (!(m_uFlags & Flags::EnableGPUTimeQueries))
+        return;
+
+    uint32 query_index = gpu_timestamp_manager->pop(current_frame);
+    vkCmdWriteTimestamp(command_buffer->vk_command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, vk_query_pool, query_index);
+}
+
+//------------------------------------------------------------------------------
 void GPUDevice::DestroyBufferInstant(ResourceHandle buffer){}
 //------------------------------------------------------------------------------
 void GPUDevice::DestroyTextureInstant(ResourceHandle texture){}
@@ -2229,9 +2308,9 @@ void GPUDevice::DestroyShaderStateInstant(ResourceHandle shader){}
 void GPUDevice::UpdateDescriptorSetInstant(DescriptorSetUpdate* update)
 {
     DescriptorSetHandle dummy_delete_descriptor_set_handle = descriptor_sets.obtainResource();
-    DescriptorSet* dummy_delete_descriptor_set = (DescriptorSet*)descriptor_sets.accessResource(dummy_delete_descriptor_set_handle);
+    DescriptorSet* dummy_delete_descriptor_set = AccessDescriptorSet(dummy_delete_descriptor_set_handle);
 
-    DescriptorSet* descriptor_set = (DescriptorSet*)descriptor_sets.accessResource(update->handle);
+    DescriptorSet* descriptor_set = AccessDescriptorSet(update->handle);
     const DescriptorSetLayout* descriptor_set_layout = descriptor_set->layout;
 
     dummy_delete_descriptor_set->vk_descriptor_set = descriptor_set->vk_descriptor_set;
@@ -2246,7 +2325,7 @@ void GPUDevice::UpdateDescriptorSetInstant(DescriptorSetUpdate* update)
     VkDescriptorBufferInfo buffer_info[8];
     VkDescriptorImageInfo image_info[8];
 
-    Sampler* sampler = (Sampler*)samplers.accessResource(default_sampler);
+    Sampler* sampler = AccessSampler(default_sampler);
 
     VkDescriptorSetAllocateInfo alloc_info {};
     alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -2368,6 +2447,126 @@ VkShaderModuleCreateInfo GPUDevice::CompileShader(const char* code, uint32 code_
     Raptor::Core::FileDelete(final_spirv_filename.c_str());
 
     return shader_create_info;
+}
+
+//------------------------------------------------------------------------------
+BufferHandle GPUDevice::GetFullscreenVertexBuffer() const
+{
+    return fullscreen_vertex_buffer;    
+}
+
+//------------------------------------------------------------------------------
+RenderPassHandle GPUDevice::GetSwapchainPass() const
+{
+    return swapchain_pass;
+}
+
+//------------------------------------------------------------------------------
+TextureHandle GPUDevice::GetDummyTexture() const
+{
+    return dummy_texture;
+}
+
+//------------------------------------------------------------------------------
+BufferHandle GPUDevice::GetDummyConstantBuffer() const
+{
+    return dummy_constant_buffer;
+}
+
+//------------------------------------------------------------------------------
+ShaderState* GPUDevice::AccessShaderState(ShaderStateHandle handle)
+{
+    return (ShaderState*)shaders.accessResource(handle);
+}
+
+//------------------------------------------------------------------------------
+const ShaderState* GPUDevice::AccessShaderState(ShaderStateHandle handle) const
+{
+    return (const ShaderState*)shaders.accessResource(handle);
+}
+
+//------------------------------------------------------------------------------
+Texture* GPUDevice::AccessTexture(TextureHandle handle)
+{
+    return (Texture*)textures.accessResource(handle);
+}
+
+//------------------------------------------------------------------------------
+const Texture* GPUDevice::AccessTexture(TextureHandle handle) const
+{
+    return (const Texture*)textures.accessResource(handle);
+}
+
+//------------------------------------------------------------------------------
+Buffer* GPUDevice::AccessBuffer(BufferHandle handle)
+{
+    return (Buffer*)buffers.accessResource(handle);
+}
+
+//------------------------------------------------------------------------------
+const Buffer* GPUDevice::AccessBuffer(BufferHandle handle) const
+{
+    return (const Buffer*)buffers.accessResource(handle);
+}
+
+//------------------------------------------------------------------------------
+Pipeline* GPUDevice::AccessPipeline(PipelineHandle handle)
+{
+    return (Pipeline*)pipelines.accessResource(handle);
+}
+
+//------------------------------------------------------------------------------
+const Pipeline* GPUDevice::AccessPipeline(PipelineHandle handle) const
+{
+    return (const Pipeline*)pipelines.accessResource(handle);
+}
+
+//------------------------------------------------------------------------------
+Sampler* GPUDevice::AccessSampler(SamplerHandle handle)
+{
+    return (Sampler*)samplers.accessResource(handle);
+}
+
+//------------------------------------------------------------------------------
+const Sampler* GPUDevice::AccessSampler(SamplerHandle handle) const
+{
+    return (const Sampler*)samplers.accessResource(handle);
+}
+
+//------------------------------------------------------------------------------
+DescriptorSetLayout* GPUDevice::AccessDescriptorSetLayout(DescriptorSetLayoutHandle handle)
+{
+    return (DescriptorSetLayout*)descriptor_set_layouts.accessResource(handle);
+}
+
+//------------------------------------------------------------------------------
+const DescriptorSetLayout* GPUDevice::AccessDescriptorSetLayout(DescriptorSetLayoutHandle handle) const
+{
+    return (const DescriptorSetLayout*)descriptor_set_layouts.accessResource(handle);
+}
+
+//------------------------------------------------------------------------------
+DescriptorSet* GPUDevice::AccessDescriptorSet(DescriptorSetHandle handle)
+{
+    return (DescriptorSet*)descriptor_sets.accessResource(handle);
+}
+
+//------------------------------------------------------------------------------
+const DescriptorSet* GPUDevice::AccessDescriptorSet(DescriptorSetHandle handle) const
+{
+    return (const DescriptorSet*)descriptor_sets.accessResource(handle);
+}
+
+//------------------------------------------------------------------------------
+RenderPass* GPUDevice::AccessRenderPass(RenderPassHandle handle)
+{
+    return (RenderPass*)render_passes.accessResource(handle);
+}
+
+//------------------------------------------------------------------------------
+const RenderPass* GPUDevice::AccessRenderPass(RenderPassHandle handle) const
+{
+    return (const RenderPass*)render_passes.accessResource(handle);
 }
 
 } // namespace Graphics
