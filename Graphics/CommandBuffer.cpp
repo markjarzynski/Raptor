@@ -245,9 +245,153 @@ void CommandBuffer::DispatchIndirect(BufferHandle handle, uint32 offset)
     vkCmdDispatchIndirect(vk_command_buffer, vk_buffer, vk_offset);
 }
 
+static ResourceState ToResourceState(PipelineStage stage)
+{
+    static ResourceState states[] = {ResourceState::INDIRECT_ARGUMENT, ResourceState::VERTEX_AND_CONSTANT_BUFFER, ResourceState::NON_PIXEL_SHADER_RESOURCE, ResourceState::PIXEL_SHADER_RESOURCE, ResourceState::RENDER_TARGET, ResourceState::UNORDERED_ACCESS, ResourceState::COPY_DEST};
+    return states[stage];
+}
+
 void CommandBuffer::Barrier(const ExecutionBarrier& barrier)
 {
+    if (current_render_pass && (current_render_pass->type != RenderPassType::Compute))
+    {
+        vkCmdEndRenderPass(vk_command_buffer);
+
+        current_render_pass = nullptr;
+    }
+
+    static VkImageMemoryBarrier image_barriers[8];
+    if (barrier.new_barrier_experimental != UINT32_MAX)
+    {
+        VkPipelineStageFlags source_stage_mask = 0;
+        VkPipelineStageFlags destination_stage_mask = 0;
+        VkAccessFlags source_access_flags = VK_ACCESS_NONE_KHR;
+        VkAccessFlags destination_access_flags = VK_ACCESS_NONE_KHR;
+
+        for (uint32 i = 0; i< barrier.num_image_barriers; i++)
+        {
+            Texture* texture = gpu_device->AccessTexture(barrier.image_barriers[i].texture);
+
+            VkImageMemoryBarrier& vk_barrier = image_barriers[i];
+            const bool is_color = !TextureFormat::HasDepthOrStencil(texture->vk_format);
+
+            VkImageMemoryBarrier* pImageBarrier = &vk_barrier;
+            pImageBarrier->sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            pImageBarrier->pNext = NULL;
+
+            ResourceState current_state = (barrier.src_pipeline_stage == PipelineStage::RenderTarget) ? ResourceState::RENDER_TARGET : ResourceState::PIXEL_SHADER_RESOURCE;
+            ResourceState next_state = (barrier.dst_pipeline_stage == PipelineStage::RenderTarget) ? ResourceState::RENDER_TARGET : ResourceState::PIXEL_SHADER_RESOURCE;
+            if (!is_color)
+            {
+                current_state = barrier.src_pipeline_stage == (PipelineStage::RenderTarget) ? ResourceState::DEPTH_WRITE : ResourceState::DEPTH_READ;
+                next_state = barrier.dst_pipeline_stage == (PipelineStage::RenderTarget) ? ResourceState::DEPTH_WRITE : ResourceState::DEPTH_READ;
+            }
+
+            pImageBarrier->srcAccessMask = ToVkAccessFlags(current_state);
+            pImageBarrier->dstAccessMask = ToVkAccessFlags(next_state);
+            pImageBarrier->oldLayout = ToVkImageLayout(current_state);
+            pImageBarrier->newLayout = ToVkImageLayout(next_state);
+            pImageBarrier->image = texture->vk_image;
+            pImageBarrier->subresourceRange.aspectMask = (is_color) ? VK_IMAGE_ASPECT_COLOR_BIT : VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+            pImageBarrier->subresourceRange.baseMipLevel = 0;
+            pImageBarrier->subresourceRange.levelCount = 1;
+            pImageBarrier->subresourceRange.baseArrayLayer = 0;
+            pImageBarrier->subresourceRange.layerCount = 1;
+            pImageBarrier->srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            pImageBarrier->dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+            source_access_flags |= pImageBarrier->srcAccessMask;
+            destination_access_flags |= pImageBarrier->dstAccessMask;
+
+            vk_barrier.oldLayout = texture->vk_image_layout;
+            texture->vk_image_layout = vk_barrier.newLayout;
+        }
+
+        static VkBufferMemoryBarrier buffer_memory_barriers[8];
+        for (uint32 i = 0; i < barrier.num_memory_barriers; i++)
+        {
+            VkBufferMemoryBarrier& vk_barrier = buffer_memory_barriers[i];
+            vk_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+
+            Buffer* buffer = gpu_device->AccessBuffer(barrier.memory_barriers[i].buffer);
+
+            vk_barrier.buffer = buffer->vk_buffer;
+            vk_barrier.offset = 0;
+            vk_barrier.size = buffer->size;
+
+            ResourceState current_state = ToResourceState(barrier.src_pipeline_stage);
+            ResourceState next_state = ToResourceState(barrier.dst_pipeline_stage);
+            vk_barrier.srcAccessMask = ToVkAccessFlags(current_state);
+            vk_barrier.dstAccessMask = ToVkAccessFlags(next_state);
+
+            source_access_flags |= vk_barrier.srcAccessMask;
+            destination_access_flags |= vk_barrier.dstAccessMask;
+
+            vk_barrier.srcQueueFamilyIndex = 0;
+            vk_barrier.dstQueueFamilyIndex = 0;
+        }
+
+        source_stage_mask = DeterminePipelineStageFlags(source_access_flags, (barrier.src_pipeline_stage == PipelineStage::ComputeShader) ? QueueType::Compute : QueueType::Graphics);
+        destination_stage_mask = DeterminePipelineStageFlags(destination_access_flags, (barrier.dst_pipeline_stage == PipelineStage::ComputeShader) ? QueueType::Compute : QueueType::Graphics);
+
+        vkCmdPipelineBarrier(vk_command_buffer, source_stage_mask, destination_stage_mask, 0, 0, nullptr, barrier.num_memory_barriers, buffer_memory_barriers, barrier.num_image_barriers, image_barriers);
+        return;
+    }
+
+    VkImageLayout new_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    VkImageLayout new_depth_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+    VkAccessFlags source_access_mask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
+    VkAccessFlags source_buffer_access_mask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
+    VkAccessFlags source_depth_access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    VkAccessFlags destination_access_mask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
+    VkAccessFlags destination_buffer_access_mask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
+    VkAccessFlags destination_depth_access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+    switch (barrier.dst_pipeline_stage)
+    {
+        case PipelineStage::FragmentShader: break;
+        case PipelineStage::ComputeShader:
+        {
+            new_layout = VK_IMAGE_LAYOUT_GENERAL;
+        } break;
+        case PipelineStage::RenderTarget:
+        {
+            new_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            new_depth_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            destination_access_mask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+            destination_depth_access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+        } break;
+        case PipelineStage::DrawIndirect:
+        {
+            destination_buffer_access_mask = VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+        } break;
+    }
+
+    switch (barrier.src_pipeline_stage)
+    {
+        case PipelineStage::FragmentShader: break;
+        case PipelineStage::ComputeShader: break;
+        case PipelineStage::RenderTarget:
+        {
+            source_access_mask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            source_depth_access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        } break;
+        case PipelineStage::DrawIndirect:
+        {
+            source_buffer_access_mask = VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+        } break;
+    }
+
+    bool has_depth = false;
+
+    for (uint32 i = 0; i < barrier.num_image_barriers; i++)
+    {
+        // TODO
+    }
+
     // TODO
+
+    //vkCmdPipelineBarrier
 }
 
 void CommandBuffer::FillBuffer(BufferHandle handle, uint32 offset, uint32 size, uint32 data)

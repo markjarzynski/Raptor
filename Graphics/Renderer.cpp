@@ -78,9 +78,18 @@ void Renderer::BeginFrame()
     gpu_device->NewFrame();
 }
 
-void Renderer::EndFrame() {}
+void Renderer::EndFrame()
+{
+    gpu_device->Present();
+}
 
-void Renderer::ResizeSwapchain(uint32 width, uint32 height) {}
+void Renderer::ResizeSwapchain(uint32 width, uint32 height)
+{
+    gpu_device->Resize(width, height);
+
+    this->width = gpu_device->swapchain_width;
+    this->height = gpu_device->swapchain_height;
+}
 
 float Renderer::AspectRatio() const
 {

@@ -38,11 +38,6 @@ using Allocator = eastl::allocator;
 template <typename T, typename Allocator> using Vector = eastl::vector<T, Allocator>;
 using Raptor::Application::Window;
 
-enum class QueueType
-{
-    Graphics, Compute, CopyTransfer, Max
-};
-
 class CommandBuffer;
 
 class GPUDevice
