@@ -50,6 +50,10 @@ void ResourceCache::shutdown(Renderer* renderer)
         SamplerResource* sampler = it->second;
         renderer->DestroySampler(sampler);
     }
+
+    buffers.clear();
+    textures.clear();
+    samplers.clear();
 }
 
 } // namespace Graphics

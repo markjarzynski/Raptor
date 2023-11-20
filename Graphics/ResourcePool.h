@@ -84,7 +84,7 @@ inline T* ResourcePoolTyped<T>::obtain()
 template<typename T>
 inline void ResourcePoolTyped<T>::release(T* resource)
 {
-    ResourcePool::release_resource(resource->pool_index);
+    ResourcePool::releaseResource(resource->pool_index);
 }
 
 template<typename T>

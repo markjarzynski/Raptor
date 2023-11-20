@@ -56,7 +56,8 @@
         "xlocbuf": "cpp",
         "cmath": "cpp",
         "valarray": "cpp",
-        "*.rh": "cpp"
+        "*.rh": "cpp",
+        "thread": "cpp"
     },
     "editor.suggest.snippetsPreventQuickSuggestions": false,
 }

@@ -84,8 +84,7 @@ void Renderer::ResizeSwapchain(uint32 width, uint32 height) {}
 
 float Renderer::AspectRatio() const
 {
-
-    return 1.f;
+    return gpu_device->swapchain_width * 1.f / gpu_device->swapchain_height;
 }
 
 BufferResource* Renderer::CreateBuffer(const CreateBufferParams& params)
@@ -122,6 +121,27 @@ BufferResource* Renderer::CreateBuffer(ResourceUsageType usage, VkBufferUsageFla
 
 TextureResource* Renderer::CreateTexture(const CreateTextureParams& params)
 {
+    TextureResource* texture = textures.obtain();
+
+    if (texture)
+    {
+        TextureHandle handle = gpu_device->CreateTexture(params);
+        texture->handle = handle;
+        texture->name = params.name;
+        gpu_device->QueryTexture(handle, texture->desc);
+
+        if (params.name != nullptr)
+        {
+            uint64 hash = HashString(params.name);
+            Pair<uint64, TextureResource*> pair = {hash, texture};
+            resource_cache.textures.insert(pair);
+        }
+
+        texture->references = 1;
+
+        return texture;
+    }
+
     return nullptr;
 }
 
@@ -173,17 +193,71 @@ SamplerResource* Renderer::CreateSampler(const CreateSamplerParams& params)
     return nullptr;
 }
 
-void Renderer::DestroyBuffer(BufferResource* buffer) {}
-void Renderer::DestroyTexture(TextureResource* texture) {}
-void Renderer::DestroySampler(SamplerResource* sampler) {}
+void Renderer::DestroyBuffer(BufferResource* buffer)
+{
+    if (!buffer)
+        return;
+    
+    buffer->RemoveReference();
+    if (buffer->references)
+        return;
+    
+    uint64 hash = HashString(buffer->name);
+    auto it = resource_cache.buffers.find(hash);
+    resource_cache.buffers.erase(it);
+
+    gpu_device->DestroyBuffer(buffer->handle);
+    buffers.release(buffer);
+}
+
+void Renderer::DestroyTexture(TextureResource* texture)
+{
+    if (!texture)
+        return;
+    
+    texture->RemoveReference();
+    if (texture->references)
+        return;
+    
+    uint64 hash = HashString(texture->name);
+    auto it = resource_cache.textures.find(hash);
+    resource_cache.textures.erase(it);
+
+    gpu_device->DestroyTexture(texture->handle);
+    textures.release(texture);
+}
+
+void Renderer::DestroySampler(SamplerResource* sampler)
+{
+    if (!sampler)
+        return;
+    
+    sampler->RemoveReference();
+    if (sampler->references)
+        return;
+    
+    uint64 hash = HashString(sampler->name);
+    auto it = resource_cache.samplers.find(hash);
+    resource_cache.samplers.erase(it);
+
+    gpu_device->DestroyTexture(sampler->handle);
+    samplers.release(sampler);
+}
 
 void* Renderer::MapBuffer(BufferResource* buffer, uint32 offset, uint32 size)
 {
-    return nullptr;
+    MapBufferParams cb_map = {buffer->handle, offset, size};
+    return gpu_device->MapBuffer(cb_map);
 }
 
-void Renderer::UnmapBuffer(BufferResource* buffer) {}
-
+void Renderer::UnmapBuffer(BufferResource* buffer)
+{
+    if (buffer->desc.parent_handle == InvalidBuffer)
+    {
+        MapBufferParams cb_map = {buffer->handle, 0, 0};
+        gpu_device->UnmapBuffer(cb_map);
+    }
+}
 
 // BufferLoader  ----------------------------
 Resource* BufferLoader::Get(const char* name)
