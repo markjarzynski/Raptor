@@ -2243,7 +2243,59 @@ void GPUDevice::Present()
 
     if (resource_deletion_queue.size() > 0)
     {
-        // TODO
+        for (uint32 i = resource_deletion_queue.size() - 1; i >= 0; i--)
+        {
+            ResourceUpdate& resource_deletion = resource_deletion_queue[i];
+
+            if (resource_deletion.current_frame == current_frame)
+            {
+                switch (resource_deletion.type)
+                {
+                    case ResourceDeletionType::Buffer:
+                    {
+                        DestroyBufferInstant(resource_deletion.handle);
+                    } break;
+
+                    case ResourceDeletionType::Pipeline:
+                    {
+                        DestroyPipelineInstant(resource_deletion.handle);
+                    } break;
+
+                    case ResourceDeletionType::RenderPass:
+                    {
+                        DestroyRenderPassInstant(resource_deletion.handle);
+                    } break;
+
+                    case ResourceDeletionType::DescriptorSet:
+                    {
+                        DestroyDescriptorSetInstant(resource_deletion.handle);
+                    } break;
+
+                    case ResourceDeletionType::DescriptorSetLayout:
+                    {
+                        DestroyDescriptorSetLayoutInstant(resource_deletion.handle);
+                    } break;
+
+                    case ResourceDeletionType::Sampler:
+                    {
+                        DestroySamplerInstant(resource_deletion.handle);
+                    } break;
+
+                    case ResourceDeletionType::ShaderState:
+                    {
+                        DestroyShaderStateInstant(resource_deletion.handle);
+                    } break;
+
+                    case ResourceDeletionType::Texture:
+                    {
+                        DestroyTextureInstant(resource_deletion.handle);
+                    } break;
+                }
+
+                resource_deletion.current_frame = UINT32_MAX;
+                resource_deletion_queue.pop_back();
+            }
+        }
     }
 }
 

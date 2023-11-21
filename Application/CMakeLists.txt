@@ -25,4 +25,5 @@ PRIVATE
     "Vulkan::Vulkan"
     glfw
     "Raptor::Core"
+    "Raptor::Math"
 )

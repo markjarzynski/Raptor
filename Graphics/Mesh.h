@@ -61,6 +61,7 @@ struct MeshDraw
     VkIndexType vk_index_type;
 
     DescriptorSetHandle descriptor_set;
+
 }; // struct MeshDraw
 } // namespace Graphics
 } // namespace Raptor

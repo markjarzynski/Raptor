@@ -14,5 +14,12 @@ enum Key : uint32
     KEY_W = GLFW_KEY_W,
 };
 
+enum MouseButton : uint32
+{
+    MOUSE_BUTTON_LEFT = GLFW_MOUSE_BUTTON_LEFT,
+    MOUSE_BUTTON_RIGHT = GLFW_MOUSE_BUTTON_RIGHT,
+    MOUSE_BUTTON_MIDDLE = GLFW_MOUSE_BUTTON_MIDDLE,
+};
+
 } // namespace Application
 } // namespace Raptor

@@ -11,6 +11,8 @@ template mat4<float> mat4<float>::operator * (const mat4<float>& rhs);
 template mat4<float>* mat4<float>::Zero();
 template mat4<float>* mat4<float>::Identity();
 
+template mat4<float>* mat4<float>::Scale(const vec3<float>& scale);
+
 template mat4<float> mat4<float>::Transpose();
 template mat4<float> mat4<float>::Inverse();
 template mat4<float> mat4<float>::Adjugate();

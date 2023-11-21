@@ -32,6 +32,15 @@ mat4<T>* mat4<T>::Identity()
 }
 
 template<typename T>
+mat4<T>* mat4<T>::Scale(const vec3<T>& scale)
+{
+    _11 *= scale.x;
+    _22 *= scale.y;
+    _33 *= scale.z;
+    return this;
+}
+
+template<typename T>
 mat4<T> mat4<T>::Transpose()
 {
     mat4<T> transpose {_11, _21, _31, _41, _12, _22, _32, _42, _13, _23, _33, _43, _14, _24, _34, _44};
@@ -201,16 +210,36 @@ mat4<T> mat4<T>::operator * (const mat4<T>& rhs)
 {
     mat4<T> result;
 
+    result[0][0] = this->m[0][0] * rhs.m[0][0] + this->m[1][0] * rhs.m[0][1] + this->m[2][0] * rhs.m[0][2] + this->m[3][0] * rhs.m[0][3];
+    result[0][1] = this->m[0][1] * rhs.m[0][0] + this->m[1][1] * rhs.m[0][1] + this->m[2][1] * rhs.m[0][2] + this->m[3][1] * rhs.m[0][3];
+    result[0][2] = this->m[0][2] * rhs.m[0][0] + this->m[1][2] * rhs.m[0][1] + this->m[2][2] * rhs.m[0][2] + this->m[3][2] * rhs.m[0][3];
+    result[0][3] = this->m[0][3] * rhs.m[0][0] + this->m[1][3] * rhs.m[0][1] + this->m[2][3] * rhs.m[0][2] + this->m[3][3] * rhs.m[0][3];
+    result[1][0] = this->m[0][0] * rhs.m[1][0] + this->m[1][0] * rhs.m[1][1] + this->m[2][0] * rhs.m[1][2] + this->m[3][0] * rhs.m[1][3];
+    result[1][1] = this->m[0][1] * rhs.m[1][0] + this->m[1][1] * rhs.m[1][1] + this->m[2][1] * rhs.m[1][2] + this->m[3][1] * rhs.m[1][3];
+    result[1][2] = this->m[0][2] * rhs.m[1][0] + this->m[1][2] * rhs.m[1][1] + this->m[2][2] * rhs.m[1][2] + this->m[3][2] * rhs.m[1][3];
+    result[1][3] = this->m[0][3] * rhs.m[1][0] + this->m[1][3] * rhs.m[1][1] + this->m[2][3] * rhs.m[1][2] + this->m[3][3] * rhs.m[1][3];
+    result[2][0] = this->m[0][0] * rhs.m[2][0] + this->m[1][0] * rhs.m[2][1] + this->m[2][0] * rhs.m[2][2] + this->m[3][0] * rhs.m[2][3];
+    result[2][1] = this->m[0][1] * rhs.m[2][0] + this->m[1][1] * rhs.m[2][1] + this->m[2][1] * rhs.m[2][2] + this->m[3][1] * rhs.m[2][3];
+    result[2][2] = this->m[0][2] * rhs.m[2][0] + this->m[1][2] * rhs.m[2][1] + this->m[2][2] * rhs.m[2][2] + this->m[3][2] * rhs.m[2][3];
+    result[2][3] = this->m[0][3] * rhs.m[2][0] + this->m[1][3] * rhs.m[2][1] + this->m[2][3] * rhs.m[2][2] + this->m[3][3] * rhs.m[2][3];
+    result[3][0] = this->m[0][0] * rhs.m[3][0] + this->m[1][0] * rhs.m[3][1] + this->m[2][0] * rhs.m[3][2] + this->m[3][0] * rhs.m[3][3];
+    result[3][1] = this->m[0][1] * rhs.m[3][0] + this->m[1][1] * rhs.m[3][1] + this->m[2][1] * rhs.m[3][2] + this->m[3][1] * rhs.m[3][3];
+    result[3][2] = this->m[0][2] * rhs.m[3][0] + this->m[1][2] * rhs.m[3][1] + this->m[2][2] * rhs.m[3][2] + this->m[3][2] * rhs.m[3][3];
+    result[3][3] = this->m[0][3] * rhs.m[3][0] + this->m[1][3] * rhs.m[3][1] + this->m[2][3] * rhs.m[3][2] + this->m[3][3] * rhs.m[3][3];
+
+    /*
     for (uint32 i = 0; i < 4; i++)
     {
         for (uint32 j = 0; j < 4; j++)
         {
+            result[i][j] = 0;
             for (uint32 k = 0; k < 4; k++)
             {
-                result.m[i][j] += this->m[i][k] * rhs.m[k][j];
+                result[i][j] += this->m[i][k] * rhs.m[k][j];
             }
         }
     }
+    */
 
     return result;
 }
@@ -262,17 +291,17 @@ mat4<T> operator * (T lhs, const mat4<T>& rhs)
 
 mat4f Transform::CalcMatrix()
 {
-    mat4f trans_mat;
+    mat4f trans_mat; trans_mat.Identity();
     trans_mat._41 = translation.x;
     trans_mat._42 = translation.y;
     trans_mat._43 = translation.z;
 
-    mat4f scale_mat;
+    mat4f scale_mat; scale_mat.Identity();
     scale_mat._11 = scale.x;
     scale_mat._22 = scale.y;
     scale_mat._33 = scale.z;
 
-    mat4f rot_mat;
+    mat4f rot_mat; rot_mat.Identity();
     rot_mat.FromQuaternion(rotation);
 
     return trans_mat * rot_mat * scale_mat;

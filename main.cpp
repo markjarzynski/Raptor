@@ -222,8 +222,8 @@ int main( int argc, char** argv)
     {
         Raptor::Graphics::CreatePipelineParams pipeline_params;
 
-        pipeline_params.vertex_input.AddVertexAttribute({0, 0, Raptor::Graphics::VertexComponentFormat::Enum::Float3, 0});
         // position
+        pipeline_params.vertex_input.AddVertexAttribute({0, 0, Raptor::Graphics::VertexComponentFormat::Enum::Float3, 0});
         pipeline_params.vertex_input.AddVertexStream({0, 12, Raptor::Graphics::VertexInputRate::PerVertex});
         
         // tangent
@@ -524,18 +524,19 @@ void main() {
         cube_rll_params.AddBinding({VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4, 1, "roughnessMetalnessTexture"});
         cube_rll_params.AddBinding({VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 5, 1, "emissiveTexture"});
         cube_rll_params.AddBinding({VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 6, 1, "occlusionTexture"});
-
+        // set into pipeline
         cube_dsl = gpu_device.CreateDescriptorSetLayout(cube_rll_params);
         pipeline_params.AddDescriptorSetLayout(cube_dsl);
 
-        cube_pipeline = gpu_device.CreatePipeline(pipeline_params);
-
+        // constant buffer
         Raptor::Graphics::CreateBufferParams buffer_params {};
         buffer_params.usage = Raptor::Graphics::ResourceUsageType::Dynamic;
         buffer_params.flags = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
         buffer_params.size = sizeof(UniformData);
         buffer_params.name = "cube_cb";
         cube_cb = gpu_device.CreateBuffer(buffer_params);
+
+        cube_pipeline = gpu_device.CreatePipeline(pipeline_params);
 
         tinygltf::Scene& root_gltf_scene = model.scenes[model.defaultScene];
 
@@ -621,20 +622,20 @@ void main() {
 
             for (uint32 prim_index = 0; prim_index < mesh.primitives.size(); prim_index++)
             {
-                Raptor::Graphics::MeshDraw mesh_draw {};
-                mesh_draw.material_data.model = final_matrix;
+                Raptor::Graphics::MeshDraw* mesh_draw = (Raptor::Graphics::MeshDraw*)allocator.allocate(sizeof(Raptor::Graphics::MeshDraw));
+                mesh_draw->material_data.model = final_matrix;
 
                 tinygltf::Primitive& mesh_prim = mesh.primitives[prim_index];
                 tinygltf::Accessor& indices_accessor = model.accessors[mesh_prim.indices];
                 ASSERT(indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT || indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT);
-                mesh_draw.vk_index_type = (indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16;
+                mesh_draw->vk_index_type = (indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16;
 
                 tinygltf::BufferView& indices_buffer_view = model.bufferViews[indices_accessor.bufferView];
                 Raptor::Graphics::BufferResource& indices_buffer_resource = buffers[indices_accessor.bufferView];
-                mesh_draw.index_buffer = indices_buffer_resource.handle;
-                mesh_draw.index_offset = (indices_accessor.byteOffset < 0) ? 0 : indices_accessor.byteOffset;
-                mesh_draw.count = indices_accessor.count;
-                ASSERT(mesh_draw.count % 3 == 0);
+                mesh_draw->index_buffer = indices_buffer_resource.handle;
+                mesh_draw->index_offset = (indices_accessor.byteOffset < 0) ? 0 : indices_accessor.byteOffset;
+                mesh_draw->count = indices_accessor.count;
+                ASSERT(mesh_draw->count % 3 == 0);
 
                 int32 position_accessor_index = mesh_prim.attributes["POSITION"];
                 int32 tangent_accessor_index = mesh_prim.attributes["TANGENT"];
@@ -646,7 +647,7 @@ void main() {
                 uint16* index_data_16 = (uint16*)index_data_32;
                 uint32 vertex_count = 0;
 
-                if (position_accessor_index != 0)
+                if (position_accessor_index != -1)
                 {
                     tinygltf::Accessor& position_accessor = model.accessors[position_accessor_index];
                     tinygltf::BufferView& position_buffer_view = model.bufferViews[position_accessor.bufferView];
@@ -654,8 +655,8 @@ void main() {
 
                     vertex_count = position_accessor.count;
 
-                    mesh_draw.position_buffer = position_buffer_resource.handle;
-                    mesh_draw.position_offset = (position_accessor.byteOffset < 0) ? 0 : position_accessor.byteOffset;
+                    mesh_draw->position_buffer = position_buffer_resource.handle;
+                    mesh_draw->position_offset = (position_accessor.byteOffset < 0) ? 0 : position_accessor.byteOffset;
                     
                     position_data = (Raptor::Math::vec3f*)GetBufferData(model.bufferViews, position_accessor.bufferView, buffers_data);
                 }
@@ -665,42 +666,43 @@ void main() {
                     continue;
                 }
 
-                if (normal_accessor_index != 0)
+                if (normal_accessor_index != -1)
                 {
                     tinygltf::Accessor& normal_accessor = model.accessors[normal_accessor_index];
                     tinygltf::BufferView& normal_buffer_view = model.bufferViews[normal_accessor.bufferView];
                     Raptor::Graphics::BufferResource& normal_buffer_resource = buffers[normal_accessor.bufferView];
 
-                    mesh_draw.normal_buffer = normal_buffer_resource.handle;
-                    mesh_draw.normal_offset = (normal_accessor.byteOffset < 0) ? 0 : normal_accessor.byteOffset;
+                    mesh_draw->normal_buffer = normal_buffer_resource.handle;
+                    mesh_draw->normal_offset = (normal_accessor.byteOffset < 0) ? 0 : normal_accessor.byteOffset;
                 }
                 else
                 {
+                    eastl::vector<Raptor::Math::vec3f> normals_array;
                     // TODO
                 }
 
-                if (tangent_accessor_index != 0)
+                if (tangent_accessor_index != -1)
                 {
                     tinygltf::Accessor& tangent_accessor = model.accessors[tangent_accessor_index];
                     tinygltf::BufferView& tangent_buffer_view = model.bufferViews[tangent_accessor.bufferView];
                     Raptor::Graphics::BufferResource& tangent_buffer_resource = buffers[tangent_accessor.bufferView];
 
-                    mesh_draw.tangent_buffer = tangent_buffer_resource.handle;
-                    mesh_draw.tangent_offset = (tangent_accessor.byteOffset < 0) ? 0 : tangent_accessor.byteOffset;
+                    mesh_draw->tangent_buffer = tangent_buffer_resource.handle;
+                    mesh_draw->tangent_offset = (tangent_accessor.byteOffset < 0) ? 0 : tangent_accessor.byteOffset;
 
-                    mesh_draw.material_data.flags |= Raptor::Graphics::MaterialFeatures::TangentVertexAttribute;
+                    mesh_draw->material_data.flags |= Raptor::Graphics::MaterialFeatures::TangentVertexAttribute;
                 }
 
-                if (texcoord_accessor_index != 0)
+                if (texcoord_accessor_index != -1)
                 {
                     tinygltf::Accessor& texcoord_accessor = model.accessors[texcoord_accessor_index];
                     tinygltf::BufferView& texcoord_buffer_view = model.bufferViews[texcoord_accessor.bufferView];
                     Raptor::Graphics::BufferResource& texcoord_buffer_resource = buffers[texcoord_accessor.bufferView];
 
-                    mesh_draw.texcoord_buffer = texcoord_buffer_resource.handle;
-                    mesh_draw.texcoord_offset = (texcoord_accessor.byteOffset < 0) ? 0 : texcoord_accessor.byteOffset;
+                    mesh_draw->texcoord_buffer = texcoord_buffer_resource.handle;
+                    mesh_draw->texcoord_offset = (texcoord_accessor.byteOffset < 0) ? 0 : texcoord_accessor.byteOffset;
 
-                    mesh_draw.material_data.flags |= Raptor::Graphics::MaterialFeatures::TexcoordVertexAttribute;
+                    mesh_draw->material_data.flags |= Raptor::Graphics::MaterialFeatures::TexcoordVertexAttribute;
                 }
 
                 ASSERT_MESSAGE(mesh_prim.material != -1, "[GLTF] Error: Mesh with no material is not supported.");
@@ -710,14 +712,14 @@ void main() {
                 ds_params.SetLayout(cube_dsl).Buffer(cube_cb, 0);
 
                 buffer_params.Reset().Set(Raptor::Graphics::ResourceUsageType::Dynamic, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(Raptor::Graphics::MaterialData)).SetName("material");
-                mesh_draw.material_buffer = gpu_device.CreateBuffer(buffer_params);
-                ds_params.Buffer(mesh_draw.material_buffer, 1);
+                mesh_draw->material_buffer = gpu_device.CreateBuffer(buffer_params);
+                ds_params.Buffer(mesh_draw->material_buffer, 1);
 
                 if (material.pbrMetallicRoughness.baseColorFactor.size() > 0)
                 {
                     ASSERT(material.pbrMetallicRoughness.baseColorFactor.size() == 4);
 
-                    mesh_draw.material_data.base_color_factor = {
+                    mesh_draw->material_data.base_color_factor = {
                         (float)material.pbrMetallicRoughness.baseColorFactor[0],
                         (float)material.pbrMetallicRoughness.baseColorFactor[1],
                         (float)material.pbrMetallicRoughness.baseColorFactor[2],
@@ -726,7 +728,7 @@ void main() {
                 }
                 else
                 {
-                    mesh_draw.material_data.base_color_factor = {1.f, 1.f, 1.f, 1.f};
+                    mesh_draw->material_data.base_color_factor = {1.f, 1.f, 1.f, 1.f};
                 }
 
                 if (material.pbrMetallicRoughness.baseColorTexture.index >= 0 )
@@ -742,7 +744,7 @@ void main() {
 
                     ds_params.TextureSampler(diffuse_texture_resource.handle, sampler_handle, 2);
 
-                    mesh_draw.material_data.flags |= Raptor::Graphics::MaterialFeatures::ColorTexture;
+                    mesh_draw->material_data.flags |= Raptor::Graphics::MaterialFeatures::ColorTexture;
                 }
                 else
                 {
@@ -762,15 +764,15 @@ void main() {
 
                     ds_params.TextureSampler(roughness_texture_resource.handle, sampler_handle, 3);
 
-                    mesh_draw.material_data.flags |= Raptor::Graphics::MaterialFeatures::RoughnessTexture;
+                    mesh_draw->material_data.flags |= Raptor::Graphics::MaterialFeatures::RoughnessTexture;
                 }
                 else
                 {
                     ds_params.TextureSampler(dummy_texture, dummy_sampler, 3);
                 }
 
-                mesh_draw.material_data.metallic_factor = material.pbrMetallicRoughness.metallicFactor;
-                mesh_draw.material_data.roughness_factor = material.pbrMetallicRoughness.roughnessFactor;
+                mesh_draw->material_data.metallic_factor = material.pbrMetallicRoughness.metallicFactor;
+                mesh_draw->material_data.roughness_factor = material.pbrMetallicRoughness.roughnessFactor;
 
                 if (material.occlusionTexture.index >= 0)
                 {
@@ -785,18 +787,18 @@ void main() {
 
                     ds_params.TextureSampler(occlusion_texture_resource.handle, sampler_handle, 4);
 
-                    mesh_draw.material_data.occlusion_factor = material.occlusionTexture.strength;
-                    mesh_draw.material_data.flags |= Raptor::Graphics::MaterialFeatures::OcclusionTexture;
+                    mesh_draw->material_data.occlusion_factor = material.occlusionTexture.strength;
+                    mesh_draw->material_data.flags |= Raptor::Graphics::MaterialFeatures::OcclusionTexture;
                 }
                 else
                 {
-                    mesh_draw.material_data.occlusion_factor = 1.f;
+                    mesh_draw->material_data.occlusion_factor = 1.f;
                     ds_params.TextureSampler(dummy_texture, dummy_sampler, 4);
                 }
 
                 if (material.emissiveFactor.size() > 0)
                 {
-                    mesh_draw.material_data.emissive_factor = Raptor::Math::vec3f {
+                    mesh_draw->material_data.emissive_factor = Raptor::Math::vec3f {
                         (float)material.emissiveFactor[0],
                         (float)material.emissiveFactor[1],
                         (float)material.emissiveFactor[2],
@@ -814,7 +816,7 @@ void main() {
 
                     ds_params.TextureSampler(emissive_texture_resource.handle, sampler_handle, 5);
 
-                    mesh_draw.material_data.flags |= Raptor::Graphics::MaterialFeatures::EmissiveTexture;
+                    mesh_draw->material_data.flags |= Raptor::Graphics::MaterialFeatures::EmissiveTexture;
                 }
                 else
                 {
@@ -832,15 +834,15 @@ void main() {
 
                     ds_params.TextureSampler(normal_texture_resource.handle, sampler_handle, 6);
 
-                    mesh_draw.material_data.flags |= Raptor::Graphics::MaterialFeatures::NormalTexture;
+                    mesh_draw->material_data.flags |= Raptor::Graphics::MaterialFeatures::NormalTexture;
                 }
                 else
                 {
                     ds_params.TextureSampler(dummy_texture, dummy_sampler, 6);
                 }
 
-                mesh_draw.descriptor_set = gpu_device.CreateDescriptorSet(ds_params);
-                mesh_draws.push_back(&mesh_draw);
+                mesh_draw->descriptor_set = gpu_device.CreateDescriptorSet(ds_params);
+                mesh_draws.push_back(mesh_draw);
             }
         }
     }
@@ -865,6 +867,8 @@ void main() {
     float pitch = 0.f;
     float model_scale = 1.f;
 
+    Raptor::Math::vec2d prev_mouse_pos = input.GetCursorPos();
+
     while (!window.ShouldClose())
     {
         //if (!window.minimized)
@@ -884,13 +888,25 @@ void main() {
 
         // TODO
 
-        Raptor::Math::mat4f global_model {};
+        Raptor::Math::mat4f global_model; global_model.Identity();
         {
             Raptor::Graphics::MapBufferParams cb_map = {cube_cb, 0, 0};
             float* cb_data = (float*)gpu_device.MapBuffer(cb_map);
             if (cb_data)
             {
                 // TODO input_handler
+                if (input.MousePress(Raptor::Application::MouseButton::MOUSE_BUTTON_LEFT))
+                {
+                    Raptor::Math::vec2d mouse_pos = input.GetCursorPos();
+                    pitch += (mouse_pos.y - prev_mouse_pos.y) * 0.1f;
+                    yaw += (mouse_pos.x - prev_mouse_pos.x) * 0.3f;
+
+                    pitch = eastl::clamp(pitch, -60.f, 60.f);
+                    if (yaw > 360.f)
+                        yaw -= 360.f;
+
+                    prev_mouse_pos = mouse_pos;
+                }
 
                 if (input.KeyPress(Raptor::Application::Key::KEY_W))
                     eye = eye + look * 5.f * delta_time;
@@ -909,6 +925,10 @@ void main() {
 
                 Raptor::Math::mat4f view_projection = projection * view;
 
+                Raptor::Math::mat4f rym;
+                Raptor::Math::mat4f sm; sm.Identity(); sm.Scale({model_scale, model_scale, model_scale});
+                global_model = sm;
+
                 UniformData uniform_data {};
                 uniform_data.vp = view_projection;
                 uniform_data.m = global_model;
@@ -919,59 +939,60 @@ void main() {
 
                 gpu_device.UnmapBuffer(cb_map);
             }
+        }
 
-            //if (!window.minimized)
+        //if (!window.minimized)
+        {
+            Raptor::Graphics::CommandBuffer* commands = gpu_device.GetCommandBuffer(Raptor::Graphics::QueueType::Graphics, true);
+            commands->PushMarker("Frame");
+            commands->Clear(0.3f, 0.9f, 0.3f, 1.f);
+            commands->ClearDepthStencil(1.f, 0);
+            commands->BindPass(gpu_device.GetSwapchainPass());
+            commands->BindPipeline(cube_pipeline);
+            commands->SetScissor(nullptr);
+            commands->SetViewport(nullptr);
+
+            for (uint32 iMesh = 0; iMesh < mesh_draws.size(); iMesh++)
             {
-                Raptor::Graphics::CommandBuffer* commands = gpu_device.GetCommandBuffer(Raptor::Graphics::QueueType::Graphics, true);
-                commands->PushMarker("Frame");
-                commands->Clear(0.3f, 0.9f, 0.3f, 1.f);
-                commands->ClearDepthStencil(1.f, 0);
-                commands->BindPass(gpu_device.GetSwapchainPass());
-                commands->BindPipeline(cube_pipeline);
-                commands->SetScissor(nullptr);
-                commands->SetViewport(nullptr);
+                Raptor::Graphics::MeshDraw* mesh_draw = mesh_draws[iMesh];
+                mesh_draw->material_data.model_inv = (global_model * mesh_draw->material_data.model).Transpose().Inverse();
 
-                for (uint32 iMesh = 0; iMesh < mesh_draws.size(); iMesh++)
-                {
-                    Raptor::Graphics::MeshDraw* mesh_draw = mesh_draws[iMesh];
-                    mesh_draw->material_data.model_inv = (global_model * mesh_draw->material_data.model).Transpose().Inverse();
+                Raptor::Graphics::MapBufferParams material_map = {mesh_draw->material_buffer, 0, 0};
+                Raptor::Graphics::MaterialData* material_buffer_data = (Raptor::Graphics::MaterialData*)gpu_device.MapBuffer(material_map);
 
-                    Raptor::Graphics::MapBufferParams material_map = {mesh_draw->material_buffer, 0, 0};
-                    Raptor::Graphics::MaterialData* material_buffer_data = (Raptor::Graphics::MaterialData*)gpu_device.MapBuffer(material_map);
+                memcpy(material_buffer_data, &mesh_draw->material_data, sizeof(Raptor::Graphics::MaterialData));
 
-                    memcpy(material_buffer_data, &mesh_draw->material_data, sizeof(Raptor::Graphics::MaterialData));
+                gpu_device.UnmapBuffer(material_map);
 
-                    commands->BindVertexBuffer(mesh_draw->position_buffer, 0, mesh_draw->position_offset);
-                    commands->BindVertexBuffer(mesh_draw->normal_buffer, 2, mesh_draw->normal_offset);
+                commands->BindVertexBuffer(mesh_draw->position_buffer, 0, mesh_draw->position_offset);
+                commands->BindVertexBuffer(mesh_draw->normal_buffer, 2, mesh_draw->normal_offset);
 
-                    if (mesh_draw->material_data.flags & Raptor::Graphics::MaterialFeatures::TangentVertexAttribute)
-                        commands->BindVertexBuffer(mesh_draw->tangent_buffer, 1, mesh_draw->tangent_offset);
-                    else
-                        commands->BindVertexBuffer(dummy_attribute_buffer, 1, 0);
+                if (mesh_draw->material_data.flags & Raptor::Graphics::MaterialFeatures::TangentVertexAttribute)
+                    commands->BindVertexBuffer(mesh_draw->tangent_buffer, 1, mesh_draw->tangent_offset);
+                else
+                    commands->BindVertexBuffer(dummy_attribute_buffer, 1, 0);
 
-                    if (mesh_draw->material_data.flags & Raptor::Graphics::MaterialFeatures::TexcoordVertexAttribute)
-                        commands->BindVertexBuffer(mesh_draw->texcoord_buffer, 3, mesh_draw->texcoord_offset);
-                    else
-                        commands->BindVertexBuffer(dummy_attribute_buffer, 3, 0);
+                if (mesh_draw->material_data.flags & Raptor::Graphics::MaterialFeatures::TexcoordVertexAttribute)
+                    commands->BindVertexBuffer(mesh_draw->texcoord_buffer, 3, mesh_draw->texcoord_offset);
+                else
+                    commands->BindVertexBuffer(dummy_attribute_buffer, 3, 0);
 
-                    commands->BindIndexBuffer(mesh_draw->index_buffer, mesh_draw->index_offset, mesh_draw->vk_index_type);
-                    commands->BindDescriptorSet(&mesh_draw->descriptor_set, 1, nullptr, 0);
-                    commands->DrawIndexed(Raptor::Graphics::TopologyType::Triangle, mesh_draw->count, 1, 0, 0, 0);
-                }
-
-                //debugUI.Render();
-
-                commands->PopMarker();
-                gpu_profiler.Update(gpu_device);
-
-                gpu_device.QueueCommandBuffer(commands);
-                gpu_device.Present();
+                commands->BindIndexBuffer(mesh_draw->index_buffer, mesh_draw->index_offset, mesh_draw->vk_index_type);
+                commands->BindDescriptorSet(&mesh_draw->descriptor_set, 1, nullptr, 0);
+                commands->DrawIndexed(Raptor::Graphics::TopologyType::Triangle, mesh_draw->count, 1, 0, 0, 0);
             }
-            //else
-            {
-                //debugUI.Render();
-            }
-            
+
+            //debugUI.Render();
+
+            commands->PopMarker();
+            gpu_profiler.Update(gpu_device);
+
+            gpu_device.QueueCommandBuffer(commands);
+            gpu_device.Present();
+        }
+        //else
+        {
+            //debugUI.Render();
         }
 
 
@@ -984,8 +1005,8 @@ void main() {
     for (uint32 mesh_index = 0; mesh_index < mesh_draws.size(); mesh_index++)
     {
         //Raptor::Graphics::MeshDraw& mesh_draw = mesh_draws[mesh_index];
-        //gpu_device.DestroyDescriptorSet(mesh_draw.descriptor_set);
-        //gpu_device.DestroyBuffer(mesh_draw.material_buffer);
+        //gpu_device.DestroyDescriptorSet(mesh_draw->descriptor_set);
+        //gpu_device.DestroyBuffer(mesh_draw->material_buffer);
     }
     mesh_draws.clear();
 

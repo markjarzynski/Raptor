@@ -322,8 +322,8 @@ void CommandBuffer::Barrier(const ExecutionBarrier& barrier)
             ResourceState current_state = ToResourceState(barrier.src_pipeline_stage);
             ResourceState next_state = ToResourceState(barrier.dst_pipeline_stage);
             vk_barrier.srcAccessMask = ToVkAccessFlags(current_state);
-            vk_barrier.dstAccessMask = ToVkAccessFlags(next_state);
 
+            vk_barrier.dstAccessMask = ToVkAccessFlags(next_state);
             source_access_flags |= vk_barrier.srcAccessMask;
             destination_access_flags |= vk_barrier.dstAccessMask;
 
@@ -386,12 +386,60 @@ void CommandBuffer::Barrier(const ExecutionBarrier& barrier)
 
     for (uint32 i = 0; i < barrier.num_image_barriers; i++)
     {
-        // TODO
+        Texture* texture = gpu_device->AccessTexture(barrier.image_barriers[i].texture);
+
+        VkImageMemoryBarrier& vk_barrier = image_barriers[i];
+        vk_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        vk_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        vk_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+        const bool is_color = !TextureFormat::HasDepthOrStencil(texture->vk_format);
+        has_depth = has_depth || !is_color;
+
+        vk_barrier.image = texture->vk_image;
+        vk_barrier.subresourceRange.aspectMask = (is_color) ? VK_IMAGE_ASPECT_COLOR_BIT : VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+        vk_barrier.subresourceRange.baseMipLevel = 0;
+        vk_barrier.subresourceRange.levelCount = 1;
+        vk_barrier.subresourceRange.baseArrayLayer = 0;
+        vk_barrier.subresourceRange.layerCount = 1;
+
+        vk_barrier.oldLayout = texture->vk_image_layout;
+        vk_barrier.newLayout = (is_color) ? new_layout : new_depth_layout;
+
+        vk_barrier.srcAccessMask = (is_color) ? source_access_mask : source_depth_access_mask;
+        vk_barrier.dstAccessMask = (is_color) ? destination_access_mask : destination_depth_access_mask;
+
+        texture->vk_image_layout = vk_barrier.newLayout;
     }
 
-    // TODO
+    VkPipelineStageFlags source_stage_mask = ToVkPipelineStage((PipelineStage)barrier.src_pipeline_stage);
+    VkPipelineStageFlags destination_stage_mask = ToVkPipelineStage((PipelineStage)barrier.dst_pipeline_stage);
 
-    //vkCmdPipelineBarrier
+    if (has_depth)
+    {
+        source_stage_mask |= VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        destination_stage_mask |= VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    }
+
+    static VkBufferMemoryBarrier buffer_memory_barriers[8];
+    for (uint32 i = 0; i < barrier.num_memory_barriers; i++)
+    {
+        VkBufferMemoryBarrier& vk_barrier = buffer_memory_barriers[i];
+        vk_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+
+        Buffer* buffer = gpu_device->AccessBuffer(barrier.memory_barriers[i].buffer);
+
+        vk_barrier.buffer = buffer->vk_buffer;
+        vk_barrier.offset = 0;
+        vk_barrier.size = buffer->size;
+        vk_barrier.srcAccessMask = source_buffer_access_mask;
+        vk_barrier.dstAccessMask = destination_buffer_access_mask;
+
+        vk_barrier.srcQueueFamilyIndex = 0;
+        vk_barrier.dstQueueFamilyIndex = 0;
+    }
+
+    vkCmdPipelineBarrier(vk_command_buffer, source_stage_mask, destination_stage_mask, 0, 0, nullptr, barrier.num_memory_barriers, buffer_memory_barriers, barrier.num_image_barriers, image_barriers);
 }
 
 void CommandBuffer::FillBuffer(BufferHandle handle, uint32 offset, uint32 size, uint32 data)
