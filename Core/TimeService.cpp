@@ -2,7 +2,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #else
-//#include <time.h>
+#include <time.h>
 #endif
 
 #include "TimeService.h"
@@ -33,7 +33,11 @@ int64 Now()
 
     const int64 microseconds = (time.QuadPart / sFrequency.QuadPart) * 1000000LL + (time.QuadPart % sFrequency.QuadPart) * 1000000LL / sFrequency.QuadPart;
 #else
-    // TODO
+    timespec tp;
+    clock_gettime( CLOCK_MONOTONIC, &tp );
+
+    const uint64 now = tp.tv_sec * 1000000000 + tp.tv_nsec;
+    const int64 microseconds = now / 1000;
 #endif
     return microseconds;
 }
