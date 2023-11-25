@@ -41,6 +41,67 @@ struct MaterialData
 
 struct MeshDraw
 {
+    MeshDraw()
+    {
+        index_buffer = position_buffer = tangent_buffer = normal_buffer = texcoord_buffer = InvalidBuffer;
+        material_buffer = InvalidBuffer;
+        material_data = MaterialData();
+        index_offset = position_offset = tangent_offset = normal_offset = texcoord_offset = 0;
+        count = 0;
+        vk_index_type = VK_INDEX_TYPE_MAX_ENUM;
+        descriptor_set = InvalidDescriptorSet;
+    }
+
+    ~MeshDraw(){}
+    
+    MeshDraw(MeshDraw& other)
+    {
+        index_buffer = other.index_buffer;
+        position_buffer = other.position_buffer;
+        tangent_buffer = other.tangent_buffer;
+        normal_buffer = other.normal_buffer;
+        texcoord_buffer = other.texcoord_buffer;
+
+        material_buffer = other.material_buffer;
+        material_data = other.material_data;
+
+        index_offset = other.index_offset;
+        position_offset = other.position_offset;
+        tangent_offset = other.tangent_offset;
+        normal_offset = other.normal_offset;
+        texcoord_offset = other.texcoord_offset;
+
+        count = other.count;
+
+        vk_index_type = other.vk_index_type;
+
+        descriptor_set = other.descriptor_set;
+    }
+
+    MeshDraw(const MeshDraw& other)
+    {
+        index_buffer = other.index_buffer;
+        position_buffer = other.position_buffer;
+        tangent_buffer = other.tangent_buffer;
+        normal_buffer = other.normal_buffer;
+        texcoord_buffer = other.texcoord_buffer;
+
+        material_buffer = other.material_buffer;
+        material_data = other.material_data;
+
+        index_offset = other.index_offset;
+        position_offset = other.position_offset;
+        tangent_offset = other.tangent_offset;
+        normal_offset = other.normal_offset;
+        texcoord_offset = other.texcoord_offset;
+
+        count = other.count;
+
+        vk_index_type = other.vk_index_type;
+
+        descriptor_set = other.descriptor_set;
+    }
+
     BufferHandle index_buffer;
     BufferHandle position_buffer;
     BufferHandle tangent_buffer;
@@ -61,6 +122,7 @@ struct MeshDraw
     VkIndexType vk_index_type;
 
     DescriptorSetHandle descriptor_set;
+
 
 }; // struct MeshDraw
 } // namespace Graphics

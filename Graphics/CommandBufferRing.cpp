@@ -25,7 +25,7 @@ void CommandBufferRing::Init()
     {
         VkCommandPoolCreateInfo pool_create_info {};
         pool_create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        //pool_create_info.pNext = nullptr;
+        pool_create_info.pNext = nullptr;
         pool_create_info.queueFamilyIndex = gpu_device->main_queue_family_index;
         pool_create_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
@@ -37,6 +37,7 @@ void CommandBufferRing::Init()
     {
         VkCommandBufferAllocateInfo alloc_info {};
         alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        alloc_info.pNext = nullptr;
         const uint32 pool_index = PoolFromIndex(i);
         alloc_info.commandPool = vk_command_pools[pool_index];
         alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;

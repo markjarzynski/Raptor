@@ -137,6 +137,7 @@ public:
 
     void* MapBuffer(const MapBufferParams& params);
     void UnmapBuffer(const MapBufferParams& params);
+    void* DynamicAllocate(uint32 size);
 
     Window* window;
     Allocator* allocator;
@@ -304,6 +305,8 @@ static VkBool32 DebugUtilsCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severi
 #endif
 
 static void TransitionImageLayout(VkCommandBuffer command_buffer, VkImage vk_image, VkFormat vk_format, VkImageLayout vk_image_layout, VkImageLayout vk_image_layout_new, bool isDepth);
+
+void DumpShaderCode(const char* code, VkShaderStageFlagBits stage, const char* name);
 
 } // namespace Graphics
 } // namespace Raptor

@@ -99,7 +99,7 @@ public:
 
     mat4<T> operator * (const mat4<T>& rhs);
 
-    union
+    union 
     {
         T i[16];
         T m[4][4];

@@ -62,6 +62,9 @@ PFN_vkCmdEndDebugUtilsLabelEXT pfnCmdEndDebugUtilsLabelEXT;
 static CommandBufferRing* command_buffer_ring;
 static HashMap<uint64, VkRenderPass> render_pass_cache;
 
+static sizet uboAlignment = 256;
+static sizet ssboAlignment = 256;
+
 //------------------------------------------------------------------------------
 GPUDevice::GPUDevice(Window& window, Allocator& allocator, uint32 flags, uint32 gpu_time_queries_per_frame)
     : window(&window), allocator(&allocator), m_uFlags(flags)
@@ -366,8 +369,8 @@ void GPUDevice::CreatePhysicalDevices()
     Raptor::Debug::Log("[Vulkan] Info: GPU Used: %s\n", vk_physical_device_properties.deviceName);
 
     gpu_timestamp_frequency = vk_physical_device_properties.limits.timestampPeriod / (1000 * 1000);
-    //uboAlignment = physicalDeviceProperties.limits.minUniformBufferOffsetAlignment;
-    //ssboAlignment = physicalDeviceProperties.limits.minStorageBufferOffsetAlignment;
+    uboAlignment = vk_physical_device_properties.limits.minUniformBufferOffsetAlignment;
+    ssboAlignment = vk_physical_device_properties.limits.minStorageBufferOffsetAlignment;
 
     eastl::vector<const char*> deviceExtensions;
     deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
@@ -596,8 +599,11 @@ void GPUDevice::CreatePools(uint32 gpu_time_queries_per_frame)
 
     VkQueryPoolCreateInfo queryPoolInfo = {};
     queryPoolInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+    queryPoolInfo.pNext = nullptr;
+    queryPoolInfo.flags = 0;
     queryPoolInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
     queryPoolInfo.queryCount = gpu_time_queries_per_frame * 2u * MAX_FRAMES;
+    queryPoolInfo.pipelineStatistics = 0;
 
     result = vkCreateQueryPool(vk_device, &queryPoolInfo, vk_allocation_callbacks, &vk_query_pool);
     ASSERT_MESSAGE(result == VK_SUCCESS, "[Vulkan] Error: Failed to create query pool.");
@@ -2030,7 +2036,7 @@ void* GPUDevice::MapBuffer(const MapBufferParams& params)
     if (buffer->parent_buffer == dynamic_buffer)
     {
         buffer->global_offset = dynamic_allocated_size;
-        return allocator->allocate((params.size == 0) ? buffer->size : params.size);
+        return DynamicAllocate((params.size == 0) ? buffer->size : params.size);
     }
 
     void* data;
@@ -2048,6 +2054,14 @@ void GPUDevice::UnmapBuffer(const MapBufferParams& params)
         return;
 
     vmaUnmapMemory(vma_allocator, buffer->vma_allocation);
+}
+
+void* GPUDevice::DynamicAllocate(uint32 size)
+{
+    void* mapped_memory = dynamic_mapped_memory + dynamic_allocated_size;
+    const sizet alignment_mask = uboAlignment - 1;
+    dynamic_allocated_size += (size + alignment_mask) & ~alignment_mask;
+    return mapped_memory;
 }
 
 //------------------------------------------------------------------------------
@@ -2170,7 +2184,7 @@ void GPUDevice::NewFrame()
 
     if (descriptor_set_updates.size())
     {
-        for (auto it = descriptor_set_updates.begin(); it != descriptor_set_updates.end(); it++)
+        for (auto it = descriptor_set_updates.end(); it != descriptor_set_updates.begin(); it--)
         {
             UpdateDescriptorSetInstant(it);
             it->frame_issued = UINT32_MAX;
@@ -2487,7 +2501,7 @@ VkShaderModuleCreateInfo GPUDevice::CompileShader(const char* code, uint32 code_
 
     if (shader_create_info.pCode == nullptr)
     {
-        // TODO
+        DumpShaderCode(code, stage, name);
     }
 
     Raptor::Core::FileDelete(temp_filename);
@@ -2495,6 +2509,42 @@ VkShaderModuleCreateInfo GPUDevice::CompileShader(const char* code, uint32 code_
 
     return shader_create_info;
 }
+
+bool IsEndOfLine(char c)
+{
+    return (c == '\n') || (c == '\r');
+}
+
+void DumpShaderCode(const char* code, VkShaderStageFlagBits stage, const char* name)
+{
+    Raptor::Debug::Log("Error creating shader %s, stage %s. Writing Shader:\n", name, ToStageDefines(stage));
+
+    const char* current_code = code;
+    uint32 line_index = 1;
+    eastl::string line;
+    while (current_code)
+    {
+        const char* eol = current_code;
+        if (!eol || *eol == 0)
+            break;
+        
+        while (!IsEndOfLine(*eol))
+            ++eol;
+        if (*eol == '\r')
+            ++eol;
+        if (*eol == '\n')
+            ++eol;
+
+        line.clear();
+        line.append(current_code);
+        line = line.substr(0, eol - current_code);        
+        Raptor::Debug::Log("%u: %s", line_index++, line.c_str());
+
+        current_code = eol;
+    }
+
+}
+
 
 //------------------------------------------------------------------------------
 BufferHandle GPUDevice::GetFullscreenVertexBuffer() const
