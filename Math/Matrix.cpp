@@ -8,6 +8,22 @@ namespace Math
 {
 
 template<typename T>
+mat3<T>* mat3<T>::Zero()
+{
+    _11 = _12 = _13 = _21 = _22 = _23 = _31 = _32 = _33 = static_cast<T>(0);
+    return this;
+}
+
+template<typename T>
+mat3<T>* mat3<T>::Identity()
+{
+    _11 = _22 = _33 = static_cast<T>(1);
+    _12 = _13 = _21 = _23 = _31 = _32 = static_cast<T>(0);
+
+    return this;
+}
+
+template<typename T>
 T mat3<T>::Determinant()
 {
     return _11 * (_22*_33 - _23*_32) -
@@ -235,7 +251,7 @@ mat4<T> mat4<T>::operator * (const mat4<T>& rhs)
             result[i][j] = 0;
             for (uint32 k = 0; k < 4; k++)
             {
-                result[i][j] += this->m[i][k] * rhs.m[k][j];
+                result[i][j] += this->m[k][j] * rhs.m[i][k];
             }
         }
     }
@@ -288,6 +304,17 @@ mat4<T> operator * (T lhs, const mat4<T>& rhs)
         lhs * rhs.i[15]);
 }
 
+template<typename T>
+vec3<T> operator * (mat3<T>& lhs, const vec3<T>& rhs)
+{
+    vec3<T> result;
+
+    result.x = lhs._11 * rhs.x + lhs._12 * rhs.y + lhs._13 * rhs.z;
+    result.y = lhs._21 * rhs.x + lhs._22 * rhs.y + lhs._23 * rhs.z;
+    result.z = lhs._31 * rhs.x + lhs._32 * rhs.y + lhs._33 * rhs.z;
+
+    return result;
+}
 
 mat4f Transform::CalcMatrix()
 {

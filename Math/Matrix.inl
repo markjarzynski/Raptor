@@ -7,6 +7,11 @@ namespace Math
 {
 
 template mat4<float> mat4<float>::operator * (const mat4<float>& rhs);
+template vec3<float> operator * (mat3<float>& lhs, const vec3<float>& rhs);
+
+
+template mat3<float>* mat3<float>::Zero();
+template mat3<float>* mat3<float>::Identity();
 
 template mat4<float>* mat4<float>::Zero();
 template mat4<float>* mat4<float>::Identity();

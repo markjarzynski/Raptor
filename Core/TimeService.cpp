@@ -25,13 +25,26 @@ void Init()
 #endif
 }
 
+// Taken from the Rust code base: https://github.com/rust-lang/rust/blob/3809bbf47c8557bd149b3e52ceb47434ca8378d5/src/libstd/sys_common/mod.rs#L124
+// Computes (value*numer)/denom without overflow, as long as both
+// (numer*denom) and the overall result fit into i64 (which is the case
+// for our time conversions).
+static int64 int64_mul_div(int64 value, int64 numer, int64 denom) {
+    const int64 q = value / denom;
+    const int64 r = value % denom;
+    // Decompose value as (value/denom*denom + value%denom),
+    // substitute into (value*numer)/denom and simplify.
+    // r < denom, so (denom*numer) is the upper bound of (r*numer)
+    return q * numer + r * numer / denom;
+}
+
 int64 Now()
 {
 #if defined(_MSC_VER)
     LARGE_INTEGER time;
-    QueryPerformanceFrequency(&time);
+    QueryPerformanceCounter(&time);
 
-    const int64 microseconds = (time.QuadPart / sFrequency.QuadPart) * 1000000LL + (time.QuadPart % sFrequency.QuadPart) * 1000000LL / sFrequency.QuadPart;
+    const int64 microseconds = int64_mul_div(time.QuadPart, 1000000LL, sFrequency.QuadPart);
 #else
     timespec tp;
     clock_gettime( CLOCK_MONOTONIC, &tp );

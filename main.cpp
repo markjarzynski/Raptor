@@ -900,6 +900,18 @@ void main() {
                     if (yaw > 360.f)
                         yaw -= 360.f;
 
+                    Raptor::Math::mat3f rxm; rxm.Identity();
+                    rxm._22 = cosf(-pitch); rxm._23 = -sinf(-pitch);
+                    rxm._32 = sinf(-pitch); rxm._33 = cosf(-pitch);
+
+                    Raptor::Math::mat3f rym; rym.Identity();
+                    rxm._11 = cosf(-yaw); rxm._13 = sinf(-yaw);
+                    rxm._31 = -sinf(-yaw); rxm._33 = cosf(-yaw);
+
+                    look = rxm * Raptor::Math::vec3f(0.f, 0.f, -1.f);
+                    look = rym * look;
+                    right = Raptor::Math::cross(look, Raptor::Math::vec3f(0.f, 1.f, 0.f));
+
                     prev_mouse_pos = mouse_pos;
                 }
 

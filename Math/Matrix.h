@@ -28,6 +28,9 @@ public:
 
     ~mat3(){}
 
+    mat3<T>* Zero();
+    mat3<T>* Identity();
+
     T Determinant();
 
     union
@@ -111,7 +114,10 @@ public:
 
 template<typename T> mat4<T> operator * (const mat4<T>& lhs, T rhs);
 template<typename T> mat4<T> operator * (T lhs, const mat4<T>& rhs);
+template<typename T> vec3<T> operator * (mat3<T>& lhs, const vec3<T>& rhs);
 
+typedef mat3<float> mat3f;
+typedef mat3<double> mat3d;
 typedef mat4<float> mat4f;
 typedef mat4<double> mat4d;
 
