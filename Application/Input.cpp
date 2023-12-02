@@ -15,6 +15,17 @@ Input::~Input()
 
 }
 
+void Input::NewFrame()
+{
+
+}
+
+void Input::Update(float delta)
+{
+    previous_mouse_position = mouse_position;
+    mouse_position = GetCursorPos();
+}
+
 bool Input::KeyPress(Key key)
 {
     int state = glfwGetKey(window->GetGLFWwindow(), key);

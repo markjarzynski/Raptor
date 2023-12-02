@@ -862,8 +862,6 @@ void main() {
     float pitch = 0.f;
     float model_scale = 1.f;
 
-    Raptor::Math::vec2d prev_mouse_pos = input.GetCursorPos();
-
     while (!window.ShouldClose())
     {
         //if (!window.minimized)
@@ -881,6 +879,9 @@ void main() {
         float delta_time = (float)Raptor::Core::Time::DeltaSeconds(begin_frame_tick, current_tick);
         begin_frame_tick = current_tick;
 
+        input.NewFrame();
+        input.Update(delta_time);
+
         // TODO ImGui
 
         Raptor::Math::mat4f global_model; global_model.Identity();
@@ -892,13 +893,12 @@ void main() {
                 // TODO input_handler
                 if (input.MousePress(Raptor::Application::MouseButton::MOUSE_BUTTON_LEFT))
                 {
-                    Raptor::Math::vec2d mouse_pos = input.GetCursorPos();
-                    pitch += (mouse_pos.y - prev_mouse_pos.y) * 0.1f;
-                    yaw += (mouse_pos.x - prev_mouse_pos.x) * 0.3f;
+                    pitch += (input.mouse_position.y - input.previous_mouse_position.y) * 0.3f * 0.0174533f;
+                    yaw += (input.mouse_position.x - input.previous_mouse_position.x) * 0.3f * 0.0174533f;
 
-                    pitch = eastl::clamp(pitch, -60.f, 60.f);
-                    if (yaw > 360.f)
-                        yaw -= 360.f;
+                    pitch = eastl::clamp(pitch, -M_PI_3, M_PI_3);
+                    if (yaw > M_2_PI)
+                        yaw -= M_2_PI;
 
                     Raptor::Math::mat3f rxm; rxm.Identity();
                     rxm._22 = cosf(-pitch); rxm._23 = -sinf(-pitch);
@@ -911,8 +911,6 @@ void main() {
                     look = rxm * Raptor::Math::vec3f(0.f, 0.f, -1.f);
                     look = rym * look;
                     right = Raptor::Math::cross(look, Raptor::Math::vec3f(0.f, 1.f, 0.f));
-
-                    prev_mouse_pos = mouse_pos;
                 }
 
                 if (input.KeyPress(Raptor::Application::Key::KEY_W))
